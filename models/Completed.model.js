@@ -26,6 +26,7 @@ const CompletedDegreeSchema = new mongoose.Schema({
   degreeId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Degree' },
   completedAt: { type: Date, default: null }, 
   courses: [CompletedCourseSchema], 
+  completionPercentage: { type: Number, default: 0 }, 
 }, { timestamps: true }); 
 
 

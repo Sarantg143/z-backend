@@ -2,6 +2,7 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User.model");
+const Degree = require("../models/Degree.model");
 const { uploadFile } = require("../utils/fileUpload");
 const { deleteTempFile } = require("../utils/tempUtils");
 const multer = require("multer");
@@ -130,11 +131,17 @@ router.post(
   async (req, res) => {
     try {
       const userId = req.body.userId;
+      const degreeId = req.body.applyingFor;
 
       // Check if user exists
       const user = await User.findById(userId);
       if (!user) {
         return res.status(404).send({ message: "User not found." });
+      }
+
+      const degree = await Degree.findById(degreeId);
+      if (!degree) {
+        return res.status(404).send({ message: "Degree not found." });
       }
 
       // Upload files to Firebase and get URLs
@@ -178,7 +185,8 @@ router.post(
           maritalStatus: req.body.maritalStatus,
           dob: req.body.dob,
           gender: req.body.gender,
-          applyingFor: req.body.applyingFor,
+          // applyingFor: req.body.applyingFor,
+          applyingFor: { degreeId, title: degree.title },
           educationalQualification: req.body.educationalQualification,
           theologicalQualification: req.body.theologicalQualification,
           presentAddress: req.body.presentAddress,
@@ -205,7 +213,7 @@ router.post(
   }
 );
 
-// Edit User Route
+// Edit User
 router.put("/:id", upload.fields([
   { name: "signatureFile" },
   { name: "passportPhotoFile" },
@@ -214,13 +222,11 @@ router.put("/:id", upload.fields([
   try {
     const userId = req.params.id;
 
-    // Find the user to update
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).send({ message: "User not found." });
     }
 
-    // Upload new files to Firebase if provided
     const signatureFilePath = req.files?.signatureFile?.[0]?.path;
     const passportPhotoFilePath = req.files?.passportPhotoFile?.[0]?.path;
     const educationCertFilePath = req.files?.educationCertFile?.[0]?.path;
@@ -261,7 +267,7 @@ router.put("/:id", upload.fields([
         signatureFile: signatureFileUrl,
         passportPhotoFile: passportPhotoFileUrl,
         educationCertFile: educationCertFileUrl,
-        role: role || user.role,
+        // role: role || user.role,
       },
       { new: true }
     );
