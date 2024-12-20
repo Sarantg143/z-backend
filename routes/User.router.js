@@ -175,6 +175,11 @@ router.post(
         deleteTempFile(educationCertFilePath);
       }
 
+      const allDetailsFilled = req.body.firstName && req.body.lastName && req.body.mobileNo &&
+                              req.body.maritalStatus && req.body.dob && req.body.gender &&
+                              req.body.educationalQualification && req.body.theologicalQualification &&
+                              req.body.presentAddress && req.body.ministryExperience && req.body.salvationExperience;
+
       // Update user details
       const updatedUser = await User.findByIdAndUpdate(
         userId,
@@ -195,6 +200,7 @@ router.post(
           signatureFile: signatureFileUrl,
           passportPhotoFile: passportPhotoFileUrl,
           educationCertFile: educationCertFileUrl,
+          details: allDetailsFilled,
         },
         { new: true }
       );
