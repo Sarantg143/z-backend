@@ -1,5 +1,3 @@
-const Router = require('express')
-const Completed = require("../models/Completed.model"); 
 const express = require("express");
 const router = express.Router();
 const Completed = require("../models/Completed.model");
