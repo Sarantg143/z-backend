@@ -10,23 +10,19 @@ const upload = multer({ dest: path.join(__dirname, "../temp") });
 
 
 
-
-// Add a new degree
 router.post("/", async (req, res) => {
   try {
-    // Extract the degree details from the request body
+    
     const { title, description, thumbnail, price, courses } = req.body;
 
-    // Create a new Degree document
     const newDegree = new Degree({
       title,
       description,
       thumbnail,
       price,
-      courses, // Includes courses, chapters, and lessons as nested data
+      courses, 
     });
 
-    // Save the new degree to the database
     await newDegree.save();
 
     res.status(201).json({
@@ -45,7 +41,7 @@ router.post("/", async (req, res) => {
 
 router.get('/', async (req, res) => {
     try {
-      const degrees = await Degree.find(); // Retrieve all degrees from the database
+      const degrees = await Degree.find();
       res.status(200).json({
         message: "All degrees fetched successfully",
         degrees,
@@ -59,12 +55,11 @@ router.get('/', async (req, res) => {
     }
   });
   
-  // Get a degree by ID
+  
   router.get('/:degreeId', async (req, res) => {
     try {
       const { degreeId } = req.params;
   
-      // Find degree by ID
       const degree = await Degree.findById(degreeId);
   
       if (!degree) {
@@ -84,19 +79,16 @@ router.get('/', async (req, res) => {
     }
   });
   
-  // Get a course by ID within a degree
+
   router.get('/:degreeId/:courseId', async (req, res) => {
     try {
       const { degreeId, courseId } = req.params;
   
-      // Find the degree by ID
       const degree = await Degree.findById(degreeId);
   
       if (!degree) {
         return res.status(404).json({ message: "Degree not found" });
       }
-  
-      // Find the course by ID in the degree's courses array
       const course = degree.courses.find(c => c._id.toString() === courseId);
   
       if (!course) {
@@ -115,4 +107,6 @@ router.get('/', async (req, res) => {
       });
     }
   });
+
+  
 module.exports = router;
