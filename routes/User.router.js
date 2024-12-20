@@ -54,19 +54,20 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne({
       $or: [{ username }, { email }],
     });
+
+    // If user not found, return an error
     if (!user) {
       return res.status(404).send({ message: "User not found." });
     }
 
-    // Check password
+    // Check if the password is correct
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).send({ message: "Invalid credentials." });
     }
 
-    // Generate JWT token
     const token = jwt.sign(
-      { userId: user._id, email: user.email },
+      { userId: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -74,7 +75,13 @@ router.post("/login", async (req, res) => {
     res.status(200).send({
       message: "Login successful.",
       token,
-      user: { id: user._id, email: user.email, username: user.username },
+      user: { 
+        id: user._id, 
+        email: user.email, 
+        username: user.username, 
+        role: user.role 
+        
+      },
     });
   } catch (error) {
     console.error("Error during login:", error);
