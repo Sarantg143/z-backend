@@ -21,6 +21,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String }, // Hashed password
   createdAt: { type: Date, default: Date.now },
   role: { type: String, default: 'client' },
+  details: { type : Boolean, default:false},
 });
 
 const User = mongoose.model('User', userSchema);

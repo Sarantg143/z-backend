@@ -9,7 +9,7 @@ dotenv.config();
 
 const userRoutes = require("./routes/User.router");
 const degreeRoutes = require("./routes/Degree.router");
-
+const completeRoutes = require("./routes/Completed.router");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -32,6 +32,7 @@ app.use(express.json());
 // Routes
 app.use("/api/users", userRoutes);
 app.use("/api/degrees",degreeRoutes);
+app.use("/api/complete",completeRoutes);
 
 app.get("/", (req, res) => {
   res.send("Welcome to Zions API");
