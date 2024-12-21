@@ -175,11 +175,15 @@ router.post(
         deleteTempFile(educationCertFilePath);
       }
 
-      const allDetailsFilled = req.body.firstName && req.body.lastName && req.body.mobileNo &&
-                              req.body.maritalStatus && req.body.dob && req.body.gender &&req.body.applyingFor &&
-                              req.body.educationalQualification && req.body.theologicalQualification &&
-                              req.body.presentAddress && req.body.ministryExperience && req.body.salvationExperience;
+      const isFieldValid = (field) => field !== undefined && field !== null && field.trim() !== "";
 
+
+const allDetailsFilled = isFieldValid(req.body.firstName) &&isFieldValid(req.body.lastName) &&
+                         isFieldValid(req.body.mobileNo) &&isFieldValid(req.body.maritalStatus) &&
+                         isFieldValid(req.body.dob) &&isFieldValid(req.body.gender) &&
+                         isFieldValid(req.body.applyingFor) &&isFieldValid(req.body.educationalQualification) &&
+                         isFieldValid(req.body.theologicalQualification) &&isFieldValid(req.body.presentAddress) &&
+                         isFieldValid(req.body.ministryExperience) &&isFieldValid(req.body.salvationExperience);
       // Update user details
       const updatedUser = await User.findByIdAndUpdate(
         userId,
@@ -200,7 +204,7 @@ router.post(
           signatureFile: signatureFileUrl,
           passportPhotoFile: passportPhotoFileUrl,
           educationCertFile: educationCertFileUrl,
-          details: allDetailsFilled,
+          details: allDetailsFilled ? true : undefined,
         },
         { new: true }
       );
