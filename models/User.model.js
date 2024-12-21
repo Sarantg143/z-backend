@@ -8,11 +8,12 @@ const userSchema = new mongoose.Schema({
   maritalStatus: { type: String },
   dob: { type: Date },
   gender: { type: String },
-  // applyingFor: { type: String },
-  applyingFor: { 
-    degreeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Degree' },
-    title: { type: String }
-  },
+  applyingFor: { type: String },
+  //applyingFor: { 
+ //   degreeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Degree' },
+ //   title: { type: String }},
+  profilePic: {type: String},
+  profileBanner: {type: String},
   educationalQualification: { type: String },
   theologicalQualification: { type: String },
   presentAddress: { type: String },

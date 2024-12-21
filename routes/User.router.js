@@ -131,7 +131,7 @@ router.post(
   async (req, res) => {
     try {
       const userId = req.body.userId;
-      const degreeId = req.body.applyingFor;
+     // const degreeId = req.body.applyingFor;
 
       // Check if user exists
       const user = await User.findById(userId);
@@ -139,10 +139,10 @@ router.post(
         return res.status(404).send({ message: "User not found." });
       }
 
-      const degree = await Degree.findById(degreeId);
-      if (!degree) {
-        return res.status(404).send({ message: "Degree not found." });
-      }
+    //  const degree = await Degree.findById(degreeId);
+    //  if (!degree) {
+    //    return res.status(404).send({ message: "Degree not found." });
+    //  }
 
       // Upload files to Firebase and get URLs
       const signatureFilePath = req.files?.signatureFile?.[0]?.path;
@@ -176,7 +176,7 @@ router.post(
       }
 
       const allDetailsFilled = req.body.firstName && req.body.lastName && req.body.mobileNo &&
-                              req.body.maritalStatus && req.body.dob && req.body.gender &&
+                              req.body.maritalStatus && req.body.dob && req.body.gender &&req.body.applyingFor &&
                               req.body.educationalQualification && req.body.theologicalQualification &&
                               req.body.presentAddress && req.body.ministryExperience && req.body.salvationExperience;
 
@@ -190,8 +190,8 @@ router.post(
           maritalStatus: req.body.maritalStatus,
           dob: req.body.dob,
           gender: req.body.gender,
-          // applyingFor: req.body.applyingFor,
-          applyingFor: { degreeId, title: degree.title },
+          applyingFor: req.body.applyingFor,
+          // applyingFor: { degreeId, title: degree.title },
           educationalQualification: req.body.educationalQualification,
           theologicalQualification: req.body.theologicalQualification,
           presentAddress: req.body.presentAddress,
@@ -224,6 +224,8 @@ router.put("/:id", upload.fields([
   { name: "signatureFile" },
   { name: "passportPhotoFile" },
   { name: "educationCertFile" },
+  { name: "profilePic" },  
+  { name: "profileBanner" }, 
 ]), async (req, res) => {
   try {
     const userId = req.params.id;
@@ -236,36 +238,40 @@ router.put("/:id", upload.fields([
     const signatureFilePath = req.files?.signatureFile?.[0]?.path;
     const passportPhotoFilePath = req.files?.passportPhotoFile?.[0]?.path;
     const educationCertFilePath = req.files?.educationCertFile?.[0]?.path;
+    const profilePicPath = req.files?.profilePic?.[0]?.path; 
+    const profileBannerPath = req.files?.profileBanner?.[0]?.path;  
 
     let signatureFileUrl = user.signatureFile;
     let passportPhotoFileUrl = user.passportPhotoFile;
     let educationCertFileUrl = user.educationCertFile;
+    let profilePicUrl = user.profilePic; 
+    let profileBannerUrl = user.profileBanner;  
 
     if (signatureFilePath) {
-      signatureFileUrl = await uploadFile(
-        signatureFilePath,
-        req.files.signatureFile[0].originalname
-      );
+      signatureFileUrl = await uploadFile(signatureFilePath, req.files.signatureFile[0].originalname);
       deleteTempFile(signatureFilePath);
     }
 
     if (passportPhotoFilePath) {
-      passportPhotoFileUrl = await uploadFile(
-        passportPhotoFilePath,
-        req.files.passportPhotoFile[0].originalname
-      );
+      passportPhotoFileUrl = await uploadFile(passportPhotoFilePath, req.files.passportPhotoFile[0].originalname);
       deleteTempFile(passportPhotoFilePath);
     }
 
     if (educationCertFilePath) {
-      educationCertFileUrl = await uploadFile(
-        educationCertFilePath,
-        req.files.educationCertFile[0].originalname
-      );
+      educationCertFileUrl = await uploadFile(educationCertFilePath, req.files.educationCertFile[0].originalname);
       deleteTempFile(educationCertFilePath);
     }
 
-    // Update user fields
+    if (profilePicPath) {
+      profilePicUrl = await uploadFile(profilePicPath, req.files.profilePic[0].originalname);
+      deleteTempFile(profilePicPath);
+    }
+
+    if (profileBannerPath) {
+      profileBannerUrl = await uploadFile(profileBannerPath, req.files.profileBanner[0].originalname);
+      deleteTempFile(profileBannerPath);
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
@@ -273,7 +279,8 @@ router.put("/:id", upload.fields([
         signatureFile: signatureFileUrl,
         passportPhotoFile: passportPhotoFileUrl,
         educationCertFile: educationCertFileUrl,
-        // role: role || user.role,
+        profilePic: profilePicUrl, 
+        profileBanner: profileBannerUrl,  
       },
       { new: true }
     );
@@ -291,18 +298,16 @@ router.put("/:id", upload.fields([
   }
 });
 
+
 // Delete User Route
 router.delete("/:id", async (req, res) => {
   try {
     const userId = req.params.id;
 
-    // Find the user
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).send({ message: "User not found." });
     }
-
-    // Delete the user from the database
     await User.findByIdAndDelete(userId);
 
     res.status(200).send({ message: "User deleted successfully." });
@@ -319,7 +324,7 @@ router.delete("/:id", async (req, res) => {
 // Get All Users Route
 router.get("/", async (req, res) => {
   try {
-    // Fetch all users from the database
+    
     const users = await User.find();
 
     res.status(200).send({

@@ -7,7 +7,7 @@ const lessonSchema = new Schema(
     // lessonId: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
     lessonId: { type: mongoose.Schema.Types.ObjectId },
     title: { type: String, required: true },
-    file: { type: String }, // URL for lesson file (video, PDF, etc.)
+    file: { type: String }, 
     test: {
       type: {
         type: String, // "MCQ" or "QuestionAnswer"
@@ -16,9 +16,9 @@ const lessonSchema = new Schema(
       questions: [
         {
           question: { type: String, required: true },
-          options: [{ type: String }], // Options for MCQ
-          correctAnswer: { type: String }, // Correct answer for MCQ
-          answer: { type: String }, // Answer for QuestionAnswer type
+          options: [{ type: String }],
+          correctAnswer: { type: String },
+          answer: { type: String }, 
         },
       ],
     },
@@ -52,9 +52,9 @@ const courseSchema = new Schema(
       questions: [
         {
           question: { type: String, required: true },
-          options: [{ type: String }], // Options for MCQ
-          correctAnswer: { type: String }, // Correct answer for MCQ
-          answer: { type: String }, // Answer for QuestionAnswer type
+          options: [{ type: String }], 
+          correctAnswer: { type: String }, 
+          answer: { type: String }, 
         },
       ],
     },
