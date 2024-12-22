@@ -7,6 +7,7 @@ const { uploadFile } = require("../utils/fileUpload");
 const { deleteTempFile } = require("../utils/tempUtils");
 const multer = require("multer");
 const path = require("path");
+const { auth } = require("../firebaseConfig");
 
 const router = express.Router();
 const upload = multer({ dest: path.join(__dirname, "../temp") });
@@ -16,7 +17,6 @@ router.post("/signup", async (req, res) => {
   try {
     const { email, username, password , role = 'client'} = req.body;
 
-    // Check if email or username already exists
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
       return res
@@ -26,7 +26,6 @@ router.post("/signup", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user with basic details
     const newUser = new User({
       email,
       username,
@@ -51,17 +50,14 @@ router.post("/login", async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    // Find user by email or username
     const user = await User.findOne({
       $or: [{ username }, { email }],
     });
 
-    // If user not found, return an error
     if (!user) {
       return res.status(404).send({ message: "User not found." });
     }
 
-    // Check if the password is correct
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).send({ message: "Invalid credentials." });
@@ -94,11 +90,8 @@ router.post("/login", async (req, res) => {
 router.post("/google-login", async (req, res) => {
   try {
     const { email, username } = req.body;
-
-    // Check if user exists
     let user = await User.findOne({ email });
     if (!user) {
-      // If user does not exist, create a new one
       user = new User({ email, username });
       await user.save();
     }
@@ -120,7 +113,40 @@ router.post("/google-login", async (req, res) => {
   }
 });
 
-// Additional User Details Route (After Signup)
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).send({ message: "Email is required." });
+    }
+    const actionCodeSettings = {
+      url: "http://your-frontend-url.com/login", 
+      handleCodeInApp: false,  
+    };
+    const resetLink = await auth.generatePasswordResetLink(email, actionCodeSettings);
+
+    console.log(`Password reset link for ${email}: ${resetLink}`);
+
+    res.status(200).send({
+      message: "Password reset email sent successfully. Please check your inbox.",
+    });
+  } catch (error) {
+    console.error("Error sending password reset email:", error);
+
+    if (error.code === "auth/user-not-found") {
+      return res.status(404).send({ message: "No user found with this email." });
+    }
+
+    res.status(500).send({
+      message: "Failed to send password reset email.",
+      error: error.message,
+    });
+  }
+});
+
+
+// Additional User Details (After Signup)
 router.post(
   "/profile",
   upload.fields([
@@ -131,20 +157,12 @@ router.post(
   async (req, res) => {
     try {
       const userId = req.body.userId;
-     // const degreeId = req.body.applyingFor;
-
-      // Check if user exists
+    
       const user = await User.findById(userId);
       if (!user) {
         return res.status(404).send({ message: "User not found." });
       }
 
-    //  const degree = await Degree.findById(degreeId);
-    //  if (!degree) {
-    //    return res.status(404).send({ message: "Degree not found." });
-    //  }
-
-      // Upload files to Firebase and get URLs
       const signatureFilePath = req.files?.signatureFile?.[0]?.path;
       const passportPhotoFilePath = req.files?.passportPhotoFile?.[0]?.path;
       const educationCertFilePath = req.files?.educationCertFile?.[0]?.path;
@@ -348,8 +366,6 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const userId = req.params.id;
-
-    // Find the user by ID
     const user = await User.findById(userId);
 
     if (!user) {

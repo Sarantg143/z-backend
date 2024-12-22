@@ -5,9 +5,15 @@ const { Schema } = mongoose;
 const lessonSchema = new Schema(
   {
     // lessonId: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
-    lessonId: { type: mongoose.Schema.Types.ObjectId },
+    lessonId: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
     title: { type: String, required: true },
-    file: { type: String }, 
+    file: { 
+      type: String, 
+      required: false, },
+    fileType: { type: String },
+    duration: { 
+      type: Number, 
+      required: false, },
     test: {
       type: {
         type: String, // "MCQ" or "QuestionAnswer"
@@ -29,7 +35,7 @@ const lessonSchema = new Schema(
 // Chapter Schema
 const chapterSchema = new Schema(
   {
-    chapterId: { type: mongoose.Schema.Types.ObjectId },
+    chapterId: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
     title: { type: String, required: true },
     description: { type: String },
     lessons: [lessonSchema], // Array of lessons
@@ -40,7 +46,7 @@ const chapterSchema = new Schema(
 // Course Schema
 const courseSchema = new Schema(
   {
-    courseId: { type: mongoose.Schema.Types.ObjectId },
+    courseId: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
     title: { type: String, required: true },
     description: { type: String },
     thumbnail: { type: String }, // URL for course thumbnail
@@ -72,7 +78,7 @@ const courseSchema = new Schema(
 // Degree Schema
 const degreeSchema = new Schema(
   {
-    degreeId: { type: mongoose.Schema.Types.ObjectId },
+    degreeId: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
     title: { type: String, required: true },
     description: { type: String },
     thumbnail: { type: String }, 

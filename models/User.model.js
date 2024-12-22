@@ -27,7 +27,17 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   role: { type: String, default: 'client' },
   details: { type : Boolean, default:false},
+   degrees: [
+    {
+      degreeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Degree' },
+      title: { type: String }, 
+      completionPercentage: { type: Number, default: 0 }, 
+      courses: [{
+          courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
+          title: { type: String }, 
+          completionPercentage: { type: Number, default: 0 }, },],},],
 });
+
 
 const User = mongoose.model('User', userSchema);
 

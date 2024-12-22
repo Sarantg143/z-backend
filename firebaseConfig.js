@@ -13,5 +13,6 @@ admin.initializeApp({
 });
 
 const storageRef = admin.storage().bucket();
+const auth = admin.auth();
 
-module.exports = { storageRef };
+module.exports = { storageRef,auth };
