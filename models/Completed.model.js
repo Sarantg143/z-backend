@@ -15,9 +15,9 @@ const CompletedLessonSchema = mongoose.Schema({
         unique: true, // Ensure each courseId has only one entry
     },
     completedLessons: {
-        type: Array, 
-        default: [],
-    },
+      type: [String], 
+      default: [],
+  },
 });
 
 const Completed = mongoose.model("CompletedLesson", CompletedLessonSchema);

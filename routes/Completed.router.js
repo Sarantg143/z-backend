@@ -4,145 +4,115 @@ const Completed = require('../models/Completed.model');
 const CompletedLesson = Router();
 
 
-CompletedLesson.get('/:userId/:courseId', async (req, res) => {
+CompletedLesson.get('/:courseId', async (req, res) => {
   try {
-      const { userId, courseId } = req.params;
+      const { courseId } = req.params;
 
-      const completedData = await Completed.findOne({
-          userId,
-          courseId,
-      });
+      const completedData = await Completed.findOne({ courseId });
 
       if (!completedData) {
           return res.status(404).json({
               success: false,
-              message: "No completed lessons found for this user and course",
+              message: "No data found for the given courseId",
           });
       }
 
       res.status(200).json({
           success: true,
-          completedLessons: completedData.completedLessons,
+          message: "Data fetched successfully",
+          data: completedData,
       });
   } catch (e) {
-      res.status(400).json({
+      res.status(500).json({
           success: false,
           error: e.message,
-          message: "Bad Request",
+          message: "Internal Server Error",
       });
   }
 });
+
 
 CompletedLesson.get('/:userId/:degreeId', async (req, res) => {
   try {
       const { userId, degreeId } = req.params;
 
-      const completedData = await Completed.find({
-          userId,
-          degreeId,
-      });
+      const completedData = await Completed.find({ userId, degreeId });
 
       if (!completedData || completedData.length === 0) {
           return res.status(404).json({
               success: false,
-              message: "No completed lessons found for this user and degree",
+              message: "No data found for the given userId and degreeId",
+          });
+      }
+      res.status(200).json({
+          success: true,
+          message: "Data fetched successfully",
+          data: completedData,
+      });
+  } catch (e) {
+      res.status(500).json({
+          success: false,
+          error: e.message,
+          message: "Internal Server Error",
+      });
+  }
+});
+
+
+
+CompletedLesson.post('/', async (req, res) => {
+  try {
+      const { userId, degreeId, courseId, lessonTitle } = req.body;
+
+  
+      if (!userId || !degreeId || !courseId || !lessonTitle) {
+          return res.status(400).json({
+              success: false,
+              message: "Missing required fields: userId, degreeId, courseId, lessonTitle",
           });
       }
 
-      const formattedData = completedData.map((entry) => ({
-          courseId: entry.courseId,
-          completedLessons: entry.completedLessons,
-      }));
+      let completedData = await Completed.findOne({
+          courseId,
+      });
+
+      if (!completedData) {
+        
+          completedData = await Completed.create({
+              userId,
+              degreeId,
+              courseId,
+              completedLessons: [lessonTitle],
+          });
+
+          return res.status(201).json({
+              success: true,
+              message: "Lesson added successfully",
+              data: completedData,
+          });
+      }
+
+      if (completedData.completedLessons.includes(lessonTitle)) {
+          return res.status(400).json({
+              success: false,
+              message: "Lesson already marked as completed",
+          });
+      }
+      completedData.completedLessons.push(lessonTitle);
+      await completedData.save();
 
       res.status(200).json({
           success: true,
-          data: formattedData,
+          message: "Lesson added successfully",
+          data: completedData,
       });
   } catch (e) {
-      res.status(400).json({
+      res.status(500).json({
           success: false,
           error: e.message,
-          message: "Bad Request",
+          message: "Internal Server Error",
       });
   }
-});
-
-
-
-// Create new completed lesson data
-CompletedLesson.post('/', async (req, res) => {
-  try {
-      const { userId, degreeId, courseId, completedLessons } = req.body;
-      const existingEntry = await Completed.findOne({ courseId });
-
-      if (existingEntry) {
-          return res.status(400).json({
-              success: false,
-              message: "An entry already exists for this courseId",
-          });
-      }
-
-      const completedData = await Completed.create({
-          userId,
-          degreeId,
-          courseId,
-          completedLessons,
-      });
-
-      res.status(201).json({
-          success: true,
-          completedData,
-          message: "Created successfully",
-      });
-  } catch (e) {
-      res.status(400).json({
-          success: false,
-          error: e.message,
-          message: "Bad Request",
-      });
-  }
-});
-
-// Update completed lessons by adding a new lesson
-CompletedLesson.put('/:id/addLesson', async (req, res) => {
-    try {
-        const { id } = req.params; 
-        const { lessonId } = req.body; 
-
-        const completedData = await Completed.findById(id);
-
-        if (completedData) {
-            const { completedLessons } = completedData;
-
-            if (!completedLessons.includes(lessonId)) {
-                completedLessons.push(lessonId);
-
-                await completedData.save();
-
-                res.status(200).json({
-                    success: true,
-                    message: "Lesson marked as completed",
-                    updatedData: completedData,
-                });
-            } else {
-                res.status(200).json({
-                    success: true,
-                    message: "Lesson already completed",
-                });
-            }
-        } else {
-            res.status(404).json({
-                success: false,
-                message: "Data not found",
-            });
-        }
-    } catch (e) {
-        res.status(400).json({
-            success: false,
-            error: e.message,
-            message: "Bad Request",
-        });
-    }
 });
 
 CompletedLesson.put('/:courseId', async (req, res) => {
@@ -150,36 +120,41 @@ CompletedLesson.put('/:courseId', async (req, res) => {
       const { courseId } = req.params;
       const { lessonTitle } = req.body;
 
-      
-      const existingData = await Completed.findOne({ courseId });
+      if (!lessonTitle) {
+          return res.status(400).json({
+              success: false,
+              message: "Missing required field: lessonTitle",
+          });
+      }
 
-      if (!existingData) {
+      let completedData = await Completed.findOne({ courseId });
+
+      if (!completedData) {
           return res.status(404).json({
               success: false,
-              message: "Data not found for the provided courseId",
+              message: "No data found for the given courseId",
           });
       }
 
-      if (existingData.completedLessons.includes(lessonTitle)) {
-          return res.status(200).json({
-              success: true,
-              message: "Lesson already completed",
+      if (completedData.completedLessons.includes(lessonTitle)) {
+          return res.status(400).json({
+              success: false,
+              message: "Lesson already marked as completed",
           });
       }
-
-      existingData.completedLessons.push(lessonTitle);
-      const updatedData = await existingData.save();
+      completedData.completedLessons.push(lessonTitle);
+      await completedData.save();
 
       res.status(200).json({
           success: true,
-          message: "Lesson marked as completed",
-          updatedData,
+          message: "Lesson added successfully",
+          data: completedData,
       });
   } catch (e) {
-      res.status(400).json({
+      res.status(500).json({
           success: false,
           error: e.message,
-          message: "Bad Request",
+          message: "Internal Server Error",
       });
   }
 });
