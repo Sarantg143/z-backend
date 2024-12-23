@@ -4,7 +4,7 @@ const Completed = require('../models/Completed.model');
 const CompletedLesson = Router();
 
 
-CompleteLesson.get('/:userId/:courseId', async (req, res) => {
+CompletedLesson.get('/:userId/:courseId', async (req, res) => {
   try {
       const { userId, courseId } = req.params;
 
@@ -33,7 +33,7 @@ CompleteLesson.get('/:userId/:courseId', async (req, res) => {
   }
 });
 
-CompleteLesson.get('/:userId/:degreeId', async (req, res) => {
+CompletedLesson.get('/:userId/:degreeId', async (req, res) => {
   try {
       const { userId, degreeId } = req.params;
 
@@ -70,10 +70,10 @@ CompleteLesson.get('/:userId/:degreeId', async (req, res) => {
 
 
 // Create new completed lesson data
-CompleteLesson.post('/', async (req, res) => {
+CompletedLesson.post('/', async (req, res) => {
   try {
       const { userId, degreeId, courseId, completedLessons } = req.body;
-      const existingEntry = await CompletedLessonModel.findOne({ courseId });
+      const existingEntry = await Completed.findOne({ courseId });
 
       if (existingEntry) {
           return res.status(400).json({
@@ -145,7 +145,7 @@ CompletedLesson.put('/:id/addLesson', async (req, res) => {
     }
 });
 
-CompleteLesson.put('/:courseId', async (req, res) => {
+CompletedLesson.put('/:courseId', async (req, res) => {
   try {
       const { courseId } = req.params;
       const { lessonTitle } = req.body;
