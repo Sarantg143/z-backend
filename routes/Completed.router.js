@@ -85,61 +85,62 @@ CompletedLesson.get('/:userId/:degreeId', async (req, res) => {
 
 
 CompletedLesson.post('/', async (req, res) => {
-    try {
-        const { userId, degreeId, courseId, lessonTitle } = req.body;
+  try {
+      const { userId, degreeId, courseId, lessonTitle } = req.body;
 
-        // Validate request body
-        if (!userId || !degreeId || !courseId || !lessonTitle) {
-            return res.status(400).json({
-                success: false,
-                message: "Missing required fields: userId, degreeId, courseId, lessonTitle",
-            });
-        }
+      // Validate request body
+      if (!userId || !degreeId || !courseId || !lessonTitle) {
+          return res.status(400).json({
+              success: false,
+              message: "Missing required fields: userId, degreeId, courseId, lessonTitle",
+          });
+      }
 
-        // Find existing record for user and course
-        let completedData = await Completed.findOne({ userId, courseId });
+      // Find the entry for this user and course
+      let completedData = await Completed.findOne({ userId, courseId });
 
-        if (!completedData) {
-            // Create new record if none exists
-            completedData = await Completed.create({
-                userId,
-                degreeId,
-                courseId,
-                completedLessons: [lessonTitle],
-            });
+      if (!completedData) {
+          // If no entry exists, create a new one for this user and course
+          completedData = await Completed.create({
+              userId,
+              degreeId,
+              courseId,
+              completedLessons: [lessonTitle],
+          });
 
-            return res.status(201).json({
-                success: true,
-                message: "Lesson added successfully for the user and course",
-                data: completedData,
-            });
-        }
+          return res.status(201).json({
+              success: true,
+              message: "Lesson added successfully",
+              data: completedData,
+          });
+      }
 
-        // Check if lesson is already completed
-        if (completedData.completedLessons.includes(lessonTitle)) {
-            return res.status(400).json({
-                success: false,
-                message: "Lesson already marked as completed",
-            });
-        }
+      // Check if the lesson is already marked as completed
+      if (completedData.completedLessons.includes(lessonTitle)) {
+          return res.status(400).json({
+              success: false,
+              message: "Lesson already marked as completed",
+          });
+      }
 
-        // Add lesson to the completedLessons array
-        completedData.completedLessons.push(lessonTitle);
-        await completedData.save();
+      // Add the lesson to the completedLessons array
+      completedData.completedLessons.push(lessonTitle);
+      await completedData.save();
 
-        res.status(200).json({
-            success: true,
-            message: "Lesson added successfully",
-            data: completedData,
-        });
-    } catch (e) {
-        res.status(500).json({
-            success: false,
-            error: e.message,
-            message: "Internal Server Error",
-        });
-    }
+      res.status(200).json({
+          success: true,
+          message: "Lesson added successfully",
+          data: completedData,
+      });
+  } catch (e) {
+      res.status(500).json({
+          success: false,
+          error: e.message,
+          message: "Internal Server Error",
+      });
+  }
 });
+
 
 
 

@@ -12,17 +12,16 @@ const CompletedLessonSchema = mongoose.Schema({
     courseId: {
         type: String,
         required: [true, "Course ID is required"],
-        // Ensure each courseId has only one entry
     },
     completedLessons: {
-      type: [String], 
-      default: [],
-  },
+        type: [String],
+        default: [],
+    },
 });
 
-
+// Create a compound index to enforce uniqueness for userId and courseId
 CompletedLessonSchema.index({ userId: 1, courseId: 1 }, { unique: true });
 
-const Completed = mongoose.model("CompletedLesson", CompletedLessonSchema)
+const Completed = mongoose.model("CompletedLesson", CompletedLessonSchema);
 
 module.exports = Completed;
