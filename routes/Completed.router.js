@@ -3,6 +3,31 @@ const Completed = require('../models/Completed.model');
 
 const CompletedLesson = Router();
 
+CompletedLesson.get('/:userId/:courseId', async (req, res) => {
+  try {
+      const { userId, courseId } = req.params;
+      const completedData = await Completed.findOne({ userId, courseId });
+
+      if (!completedData) {
+          return res.status(404).json({
+              success: false,
+              message: "No data found for the given userId and courseId",
+          });
+      }
+
+      res.status(200).json({
+          success: true,
+          message: "Data fetched successfully",
+          data: completedData,
+      });
+  } catch (e) {
+      res.status(500).json({
+          success: false,
+          error: e.message,
+          message: "Internal Server Error",
+      });
+  }
+});
 
 CompletedLesson.get('/:courseId', async (req, res) => {
   try {
