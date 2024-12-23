@@ -1,35 +1,27 @@
 const mongoose = require('mongoose');
 
-
-const CompletedLessonSchema = new mongoose.Schema({
-  lessonId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Lesson' },
-  completedAt: { type: Date, default: Date.now }, 
+const CompletedLessonSchema = mongoose.Schema({
+    userId: {
+        type: String,
+        required: [true, "User ID is required"],
+    },
+    degreeId: {
+        type: String,
+        required: [true, "Degree ID is required"],
+    },
+    courseId: {
+        type: String,
+        required: [true, "Course ID is required"],
+    },
+    chapterId: {
+        type: String,
+        required: [true, "Chapter ID is required"],
+    },
+    completedLessons: {
+        type: Array, 
+        default: [],
+    },
 });
 
-
-const CompletedChapterSchema = new mongoose.Schema({
-  chapterId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Chapter' },
-  completedAt: { type: Date, default: Date.now }, 
-  lessons: [CompletedLessonSchema], 
-});
-
-
-const CompletedCourseSchema = new mongoose.Schema({
-  courseId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Course' },
-  completedAt: { type: Date, default: Date.now }, 
-  chapters: [CompletedChapterSchema], 
-});
-
-
-const CompletedDegreeSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
-  degreeId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Degree' },
-  completedAt: { type: Date, default: null }, 
-  courses: [CompletedCourseSchema], 
-  completionPercentage: { type: Number, default: 0 }, 
-}, { timestamps: true }); 
-
-
-const Completed = mongoose.model('Completed', CompletedDegreeSchema);
-
+const Completed = mongoose.model("CompletedLesson", CompletedLessonSchema);
 module.exports = Completed;

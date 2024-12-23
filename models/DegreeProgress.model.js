@@ -10,20 +10,20 @@ const LessonProgressSchema = new mongoose.Schema({
 // Chapter Progress Schema
 const ChapterProgressSchema = new mongoose.Schema({
   chapterId: { type: mongoose.Schema.Types.ObjectId, required: true },
-  lessons: { type: [LessonProgressSchema], default: [] },
+  lessons: [LessonProgressSchema],
 }, { _id: false });
 
 // Course Progress Schema
 const CourseProgressSchema = new mongoose.Schema({
     courseId: { type: mongoose.Schema.Types.ObjectId, required: true },
-    chapters: { type: [ChapterProgressSchema], default: [] },
+    chapters: [ChapterProgressSchema],
     watchedPercentage: { type: Number, default: 0 }, // This will store course-wise watched percentage
   }, { _id: false });
 
 // Degree Progress Schema
 const DegreeProgressSchema = new mongoose.Schema({
   degreeId: { type: mongoose.Schema.Types.ObjectId, required: true },
-  courses: { type: [CourseProgressSchema], default: [] },
+  courses:  [CourseProgressSchema],
   watchedPercentage: { type: Number, default: 0 },
 }, { _id: false });
 

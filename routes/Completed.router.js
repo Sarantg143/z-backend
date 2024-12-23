@@ -1,185 +1,95 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const Completed = require("../models/completed.model");
-const Degree = require("../models/Degree.model");
+const Router = require('express');
+const Completed = require('../models/Completed.model');
 
-const router = express.Router();
+const CompletedLesson = Router();
 
-router.post("/", async (req, res) => {
-  try {
-    const { userId, degreeId, lessonId } = req.body;
 
-    if (!userId || !degreeId || !lessonId) {
-      return res.status(400).json({ message: "Missing required fields (userId, degreeId, lessonId)" });
-    }
+CompletedLesson.get('/:userId/:degreeId/:courseId/:chapterId', async (req, res) => {
+    try {
+        const { userId, degreeId, courseId, chapterId } = req.params;
+        const completedData = await Completed.findOne({ 
+            userId, degreeId, courseId, chapterId 
+        });
 
-    // Find or create the user's degree completion data
-    let completedDegree = await Completed.findOne({ userId, degreeId });
-
-    if (!completedDegree) {
-      completedDegree = new Completed({
-        userId,
-        degreeId,
-        courses: [],
-      });
-    }
-
-    // Find the degree structure to get its courses, chapters, and lessons
-    const degree = await Degree.findById(degreeId);
-    if (!degree) {
-      return res.status(404).json({ message: "Degree not found" });
-    }
-
-    let lessonAdded = false;
-
-    // Iterate through courses in the degree
-    for (const course of degree.courses) {
-      let completedCourse = completedDegree.courses.find(
-        (c) => c.courseId.toString() === course._id.toString()
-      );
-
-      if (!completedCourse) {
-        completedCourse = {
-          courseId: course._id,
-          chapters: [],
-        };
-        completedDegree.courses.push(completedCourse);
-      }
-
-      // Iterate through chapters in the course
-      for (const chapter of course.chapters) {
-        let completedChapter = completedCourse.chapters.find(
-          (ch) => ch.chapterId.toString() === chapter._id.toString()
-        );
-
-        if (!completedChapter) {
-          completedChapter = {
-            chapterId: chapter._id,
-            lessons: [],
-          };
-          completedCourse.chapters.push(completedChapter);
+        if (completedData) {
+            res.status(200).json({
+                success: true,
+                completedData,
+            });
+        } else {
+            res.status(404).json({
+                success: false,
+                message: "No data found for the provided details",
+            });
         }
-
-        // Check if the lesson belongs to this chapter
-        const lesson = chapter.lessons.find(
-          (l) => l._id.toString() === lessonId
-        );
-
-        if (lesson) {
-          const lessonAlreadyCompleted = completedChapter.lessons.some(
-            (l) => l.lessonId.toString() === lessonId
-          );
-
-          if (!lessonAlreadyCompleted) {
-            completedChapter.lessons.push({ lessonId, completedAt: new Date() });
-            lessonAdded = true;
-          }
-
-          // Check if all lessons in the chapter are completed
-          if (
-            completedChapter.lessons.length === chapter.lessons.length &&
-            !completedChapter.completedAt
-          ) {
-            completedChapter.completedAt = new Date();
-          }
-        }
-      }
-
-      // Check if all chapters in the course are completed
-      if (
-        completedCourse.chapters.length === course.chapters.length &&
-        completedCourse.chapters.every((ch) => ch.completedAt) &&
-        !completedCourse.completedAt
-      ) {
-        completedCourse.completedAt = new Date();
-      }
+    } catch (e) {
+        res.status(400).json({
+            success: false,
+            error: e.message,
+            message: "Bad Request",
+        });
     }
-
-    // Check if all courses in the degree are completed
-    if (
-      completedDegree.courses.length === degree.courses.length &&
-      completedDegree.courses.every((c) => c.completedAt) &&
-      !completedDegree.completedAt
-    ) {
-      completedDegree.completedAt = new Date();
-    }
-
-    // Calculate completion percentages
-    const totalCourses = degree.courses.length;
-
-    // Calculate course-wise and degree-wise percentages
-    completedDegree.courses.forEach((completedCourse) => {
-      const course = degree.courses.find(
-        (c) => c._id.toString() === completedCourse.courseId.toString()
-      );
-
-      const totalChapters = course.chapters.length;
-      const completedChapters = completedCourse.chapters.filter(
-        (ch) => ch.completedAt
-      ).length;
-
-      completedCourse.completionPercentage = Math.round(
-        (completedChapters / totalChapters) * 100
-      );
-    });
-
-    const completedCourses = completedDegree.courses.filter(
-      (c) => c.completedAt
-    ).length;
-
-    completedDegree.completionPercentage = Math.round(
-      (completedCourses / totalCourses) * 100
-    );
-
-    // Save only if a new lesson was added
-    if (lessonAdded) {
-      await completedDegree.save();
-    }
-
-    // Format the response
-    const response = {
-      completionPercentage: completedDegree.completionPercentage,
-      courses: completedDegree.courses.map((completedCourse) => {
-        const course = degree.courses.find(
-          (c) => c._id.toString() === completedCourse.courseId.toString()
-        );
-
-        return {
-          courseId: completedCourse.courseId,
-          completionPercentage: completedCourse.completionPercentage,
-          chapters: completedCourse.chapters.map((completedChapter) => {
-            const chapter = course.chapters.find(
-              (ch) => ch._id.toString() === completedChapter.chapterId.toString()
-            );
-
-            return {
-              chapterId: completedChapter.chapterId,
-              completedAt: completedChapter.completedAt || null,
-              lessons: completedChapter.lessons.map((lesson) => ({
-                lessonId: lesson.lessonId,
-                completedAt: lesson.completedAt,
-              })),
-            };
-          }),
-        };
-      }),
-    };
-
-    res.status(200).json({
-      message: "Completion data saved successfully",
-      completedDegree: response,
-    });
-  } catch (error) {
-    console.error("Error saving completion data:", error);
-    res.status(500).json({
-      message: "Failed to save completion data",
-      error: error.message,
-    });
-  }
 });
 
-module.exports = router;
+// Create new completed lesson data
+CompletedLesson.post('/', async (req, res) => {
+    try {
+        const completedData = await Completed.create(req.body);
 
+        res.status(201).json({
+            success: true,
+            completedData,
+            message: "Created successfully",
+        });
+    } catch (e) {
+        res.status(400).json({
+            success: false,
+            error: e.message,
+            message: "Bad Request",
+        });
+    }
+});
 
+// Update completed lessons by adding a new lesson
+CompletedLesson.put('/:id/addLesson', async (req, res) => {
+    try {
+        const { id } = req.params; // ID of the completed lesson document
+        const { lessonId } = req.body; // Lesson to add
 
-module.exports = router;
+        const completedData = await Completed.findById(id);
+
+        if (completedData) {
+            const { completedLessons } = completedData;
+
+            if (!completedLessons.includes(lessonId)) {
+                completedLessons.push(lessonId);
+
+                await completedData.save();
+
+                res.status(200).json({
+                    success: true,
+                    message: "Lesson marked as completed",
+                    updatedData: completedData,
+                });
+            } else {
+                res.status(200).json({
+                    success: true,
+                    message: "Lesson already completed",
+                });
+            }
+        } else {
+            res.status(404).json({
+                success: false,
+                message: "Data not found",
+            });
+        }
+    } catch (e) {
+        res.status(400).json({
+            success: false,
+            error: e.message,
+            message: "Bad Request",
+        });
+    }
+});
+
+module.exports = CompletedLesson;
