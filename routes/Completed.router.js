@@ -140,6 +140,51 @@ CompletedLesson.post('/', async (req, res) => {
   }
 });
 
+CompletedLesson.put('/:userId/:courseId', async (req, res) => {
+  try {
+      const { userId, courseId } = req.params;
+      const { lessonTitle } = req.body;
+
+      if (!lessonTitle) {
+          return res.status(400).json({
+              success: false,
+              message: "Lesson title is required",
+          });
+      }
+      let completedData = await Completed.findOne({ userId, courseId });
+
+      if (!completedData) {
+          return res.status(404).json({
+              success: false,
+              message: "No data found for the given userId and courseId",
+          });
+      }
+      if (completedData.completedLessons.includes(lessonTitle)) {
+          return res.status(400).json({
+              success: false,
+              message: "Lesson already marked as completed",
+          });
+      }
+
+      completedData.completedLessons.push(lessonTitle);
+      
+      await completedData.save();
+
+      res.status(200).json({
+          success: true,
+          message: "Lesson updated successfully",
+          data: completedData,
+      });
+  } catch (e) {
+      res.status(500).json({
+          success: false,
+          error: e.message,
+          message: "Internal Server Error",
+      });
+  }
+});
+
+
 CompletedLesson.put('/:courseId', async (req, res) => {
   try {
       const { courseId } = req.params;
