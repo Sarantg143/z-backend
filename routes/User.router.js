@@ -415,4 +415,56 @@ router.get('/progress/:userId/:degreeId', async (req, res) => {
   }
 });
 
+
+router.get('/:id/watchPercent', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({ watchPercent: user.watchPercent });
+  } catch (error) {
+    res.status(500).json({ message: 'Error retrieving watchPercent', error });
+  }
+});
+
+
+router.put('/:id/watchPercent', async (req, res) => {
+  const { watchPercent } = req.body;
+  if (typeof watchPercent !== 'number' || watchPercent < 0 || watchPercent > 100) {
+    return res.status(400).json({ message: 'watchPercent must be a number between 0 and 100' });
+  }
+
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { watchPercent },
+      { new: true, runValidators: true }
+    );
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({ message: 'watchPercent updated successfully', watchPercent: user.watchPercent });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating watchPercent', error });
+  }
+});
+
+
+router.delete('/:id/watchPercent', async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { $unset: { watchPercent: 1 } }, 
+      { new: true }
+    );
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({ message: 'watchPercent deleted successfully', user });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting watchPercent', error });
+  }
+});
+
 module.exports = router;

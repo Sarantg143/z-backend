@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   role: { type: String, default: 'client' },
   details: { type : Boolean, default:false},
+  watchPercent: { type: Number, min: 0, max: 100 },
   degreeProgress: [DegreeProgressSchema],
    degrees: [
     {
