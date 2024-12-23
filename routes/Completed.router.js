@@ -143,7 +143,7 @@ CompletedLesson.post('/', async (req, res) => {
         });
     }
 });
-CompletedLesson.post('/', async (req, res) => {
+
 
 
 CompletedLesson.put('/:userId/:courseId', async (req, res) => {
