@@ -84,61 +84,67 @@ CompletedLesson.get('/:userId/:degreeId', async (req, res) => {
 });
 
 
-
 CompletedLesson.post('/', async (req, res) => {
-  try {
-      const { userId, degreeId, courseId, lessonTitle } = req.body;
+    try {
+        const { userId, degreeId, courseId, lessonTitle } = req.body;
 
-  
-      if (!userId || !degreeId || !courseId || !lessonTitle) {
-          return res.status(400).json({
-              success: false,
-              message: "Missing required fields: userId, degreeId, courseId, lessonTitle",
-          });
-      }
+        // Validate request body
+        if (!userId || !degreeId || !courseId || !lessonTitle) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: userId, degreeId, courseId, lessonTitle",
+            });
+        }
 
-      let completedData = await Completed.findOne({
-          courseId,
-      });
+        // Check if the user already has a record for the course
+        let completedData = await Completed.findOne({
+            userId, // Specific to the user
+            courseId, // Tracks the specific course
+        });
 
-      if (!completedData) {
-        
-          completedData = await Completed.create({
-              userId,
-              degreeId,
-              courseId,
-              completedLessons: [lessonTitle],
-          });
+        if (!completedData) {
+            // If no record exists for this user and course, create a new entry
+            completedData = await Completed.create({
+                userId,
+                degreeId,
+                courseId,
+                completedLessons: [lessonTitle],
+            });
 
-          return res.status(201).json({
-              success: true,
-              message: "Lesson added successfully",
-              data: completedData,
-          });
-      }
+            return res.status(201).json({
+                success: true,
+                message: "Lesson added successfully for the user and course",
+                data: completedData,
+            });
+        }
 
-      if (completedData.completedLessons.includes(lessonTitle)) {
-          return res.status(400).json({
-              success: false,
-              message: "Lesson already marked as completed",
-          });
-      }
-      completedData.completedLessons.push(lessonTitle);
-      await completedData.save();
+        // If a record exists, check if the lesson is already marked as completed
+        if (completedData.completedLessons.includes(lessonTitle)) {
+            return res.status(400).json({
+                success: false,
+                message: "This lesson has already been marked as completed by the user",
+            });
+        }
 
-      res.status(200).json({
-          success: true,
-          message: "Lesson added successfully",
-          data: completedData,
-      });
-  } catch (e) {
-      res.status(500).json({
-          success: false,
-          error: e.message,
-          message: "Internal Server Error",
-      });
-  }
+        // Add the lesson to the user's completedLessons for the course
+        completedData.completedLessons.push(lessonTitle);
+        await completedData.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Lesson added successfully",
+            data: completedData,
+        });
+    } catch (e) {
+        res.status(500).json({
+            success: false,
+            error: e.message,
+            message: "Internal Server Error",
+        });
+    }
 });
+CompletedLesson.post('/', async (req, res) => {
+
 
 CompletedLesson.put('/:userId/:courseId', async (req, res) => {
   try {
