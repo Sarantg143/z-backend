@@ -12,10 +12,7 @@ const CompletedLessonSchema = mongoose.Schema({
     courseId: {
         type: String,
         required: [true, "Course ID is required"],
-    },
-    chapterId: {
-        type: String,
-        required: [true, "Chapter ID is required"],
+        unique: true, // Ensure each courseId has only one entry
     },
     completedLessons: {
         type: Array, 
@@ -24,4 +21,5 @@ const CompletedLessonSchema = mongoose.Schema({
 });
 
 const Completed = mongoose.model("CompletedLesson", CompletedLessonSchema);
+
 module.exports = Completed;
