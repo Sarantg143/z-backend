@@ -12,7 +12,7 @@ const CompletedLessonSchema = mongoose.Schema({
     courseId: {
         type: String,
         required: [true, "Course ID is required"],
-        unique: true, // Ensure each courseId has only one entry
+        // Ensure each courseId has only one entry
     },
     completedLessons: {
       type: [String], 
