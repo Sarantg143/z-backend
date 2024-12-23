@@ -96,14 +96,11 @@ CompletedLesson.post('/', async (req, res) => {
             });
         }
 
-        // Check if the user already has a record for the course
-        let completedData = await Completed.findOne({
-            userId, // Specific to the user
-            courseId, // Tracks the specific course
-        });
+        // Find existing record for user and course
+        let completedData = await Completed.findOne({ userId, courseId });
 
         if (!completedData) {
-            // If no record exists for this user and course, create a new entry
+            // Create new record if none exists
             completedData = await Completed.create({
                 userId,
                 degreeId,
@@ -118,15 +115,15 @@ CompletedLesson.post('/', async (req, res) => {
             });
         }
 
-        // If a record exists, check if the lesson is already marked as completed
+        // Check if lesson is already completed
         if (completedData.completedLessons.includes(lessonTitle)) {
             return res.status(400).json({
                 success: false,
-                message: "This lesson has already been marked as completed by the user",
+                message: "Lesson already marked as completed",
             });
         }
 
-        // Add the lesson to the user's completedLessons for the course
+        // Add lesson to the completedLessons array
         completedData.completedLessons.push(lessonTitle);
         await completedData.save();
 
@@ -143,6 +140,7 @@ CompletedLesson.post('/', async (req, res) => {
         });
     }
 });
+
 
 
 
