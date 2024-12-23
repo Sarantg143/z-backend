@@ -20,6 +20,9 @@ const CompletedLessonSchema = mongoose.Schema({
   },
 });
 
-const Completed = mongoose.model("CompletedLesson", CompletedLessonSchema);
+
+CompletedLessonSchema.index({ userId: 1, courseId: 1 }, { unique: true });
+
+const Completed = mongoose.model("CompletedLesson", CompletedLessonSchema)
 
 module.exports = Completed;
