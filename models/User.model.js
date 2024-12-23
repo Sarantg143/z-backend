@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const DegreeProgressSchema = require('./DegreeProgress.model');
 
 const userSchema = new mongoose.Schema({
   firstName: { type: String },
@@ -27,6 +28,7 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   role: { type: String, default: 'client' },
   details: { type : Boolean, default:false},
+  degreeProgress: [DegreeProgressSchema],
    degrees: [
     {
       degreeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Degree' },

@@ -8,6 +8,7 @@ const { deleteTempFile } = require("../utils/tempUtils");
 const multer = require("multer");
 const path = require("path");
 const { auth } = require("../firebaseConfig");
+const { updateLessonProgress, calculateDegreeCompletion } = require('../utils/progress');
 
 const router = express.Router();
 const upload = multer({ dest: path.join(__dirname, "../temp") });
@@ -382,6 +383,35 @@ router.get("/:id", async (req, res) => {
       message: "Failed to retrieve user.",
       error: error.message,
     });
+  }
+});
+
+
+// Update lesson progress
+router.post('/progress', async (req, res) => {
+  const { userId, degreeId, courseIndex, chapterIndex, lessonIndex } = req.body;
+
+  try {
+    const result = await updateLessonProgress(userId, degreeId, courseIndex, chapterIndex, lessonIndex);
+    res.status(200).json({
+      message: 'Progress updated successfully',
+      watchedPercentage: result.watchedPercentage,
+      degreeProgress: result.degreeProgress,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating progress', error });
+  }
+});
+
+// Get degree progress
+router.get('/progress/:userId/:degreeId', async (req, res) => {
+  const { userId, degreeId } = req.params;
+
+  try {
+    const progress = await calculateDegreeCompletion(userId, degreeId);
+    res.status(200).json(progress);
+  } catch (error) {
+    res.status(500).json({ message: 'Error retrieving progress', error });
   }
 });
 
