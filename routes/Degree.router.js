@@ -167,7 +167,6 @@ router.post("/", upload.fields([
           const fileName = file.originalname;
           tempFiles.push(filePath); 
           return await uploadFile(filePath, fileName);
-
         }))
       : [];
 
@@ -194,7 +193,7 @@ router.post("/", upload.fields([
         title: course.title,
         description: course.description,
         thumbnail: uploadedCourseThumbnailsUrls[index] || null,
-        test: course.test|| [],
+        test: course.test || [],
         overviewPoints: course.overviewPoints || [],
         chapters: course.chapters.map((chapter, chapterIndex) => ({
           chapterId: new mongoose.Types.ObjectId(),  
@@ -207,7 +206,7 @@ router.post("/", upload.fields([
               title: lesson.title,
               file: fileMetadata.url || null,  
               fileType: fileMetadata.type || null,  
-              test: lesson.test|| [],
+              test: lesson.test || [],
             };
           }),
         })),
@@ -227,147 +226,161 @@ router.post("/", upload.fields([
       error: error.message,
     });
   } finally {
-  try {
-    await Promise.all(
-      tempFiles.map(async (filePath) => {
-      
-          const fileExists = await fs.access(filePath).then(() => true).catch(() => false);
-          if (fileExists) {
-            await fs.unlink(filePath); 
-            console.log(`Temporary file deleted: ${filePath}`);
-          } else {
-            console.warn(`Temp file not found for deletion: ${filePath}`);
-          }
-        } catch (error) {
-          console.error(`Failed to delete temp file: ${filePath}`, error);
-        }}));
-      }});
-
-
-router.put( "/:id", upload.fields([
-          { name: "degreeThumbnail", maxCount: 1 },
-          { name: "courseThumbnails", maxCount: 10 },
-          { name: "lessonFiles", maxCount: 10 },
-        ]),
-        async (req, res) => {
-          const tempFiles = []; 
+    try {
+      await Promise.all(
+        tempFiles.map(async (filePath) => {
           try {
-            const { id } = req.params;
-            const { title, description, price, courses } = req.body;
-      
-  
-            if (!title || !description || !price || !courses) {
-              return res.status(400).json({ message: "Missing required degree fields" });
+            const fileExists = await fs.access(filePath).then(() => true).catch(() => false);
+            if (fileExists) {
+              await fs.unlink(filePath); 
+              console.log(`Temporary file deleted: ${filePath}`);
+            } else {
+              console.warn(`Temp file not found for deletion: ${filePath}`);
             }
-      
-            
-            const degree = await Degree.findById(id);
-            if (!degree) {
-              return res.status(404).json({ message: "Degree not found" });
-            }
-    
-            const uploadedDegreeThumbnail = req.files["degreeThumbnail"];
-            if (uploadedDegreeThumbnail && uploadedDegreeThumbnail.length > 0) {
-              const filePath = uploadedDegreeThumbnail[0].path;
-              const fileName = uploadedDegreeThumbnail[0].originalname;
-              degree.thumbnail = await uploadFile(filePath, fileName);
-              tempFiles.push(filePath); 
-            }
-      
-            const uploadedCourseThumbnails = req.files["courseThumbnails"] || [];
-            if (uploadedCourseThumbnails.length > 0) {
-              const uploadedCourseThumbnailsUrls = await Promise.all(
-                uploadedCourseThumbnails.map(async (file) => {
-                  const filePath = file.path;
-                  const fileName = file.originalname;
-                  tempFiles.push(filePath); 
-                  return await uploadFile(filePath, fileName);
-                })
-              );
-              degree.courses.forEach((course, index) => {
-                if (uploadedCourseThumbnailsUrls[index]) {
-                  course.thumbnail = uploadedCourseThumbnailsUrls[index];
-                }
-              });
-            }
-      
-            const uploadedLessonFiles = req.files["lessonFiles"] || [];
-            if (uploadedLessonFiles.length > 0) {
-              const uploadedLessonFilesUrls = await Promise.all(
-                uploadedLessonFiles.map(async (file) => {
-                  const filePath = file.path;
-                  const fileName = file.originalname;
-                  tempFiles.push(filePath); 
-                  return await uploadFile2(filePath, fileName);
-                })
-              );
-              degree.courses.forEach((course) => {
-                course.chapters.forEach((chapter) => {
-                  chapter.lessons.forEach((lesson, lessonIndex) => {
-                    const fileMetadata = uploadedLessonFilesUrls[lessonIndex] || {};
-                    lesson.file = fileMetadata.url || lesson.file;
-                    lesson.fileType = fileMetadata.type || lesson.fileType;
-                  });
-                });
-              });
-            }
-      
-            
-            degree.title = title || degree.title;
-            degree.description = description || degree.description;
-            degree.price = price || degree.price;
-    
-            const parsedCourses = JSON.parse(courses);
-            degree.courses = parsedCourses.map((course, index) => ({
-              ...degree.courses[index], 
-              title: course.title || degree.courses[index].title,
-              description: course.description || degree.courses[index].description,
-              test: course.test || degree.courses[index].test,
-              overviewPoints: course.overviewPoints || degree.courses[index].overviewPoints,
-              chapters: course.chapters.map((chapter, chapterIndex) => ({
-                ...degree.courses[index].chapters[chapterIndex],
-                title: chapter.title || degree.courses[index].chapters[chapterIndex].title,
-                description: chapter.description || degree.courses[index].chapters[chapterIndex].description,
-                lessons: chapter.lessons.map((lesson, lessonIndex) => ({
-                  ...degree.courses[index].chapters[chapterIndex].lessons[lessonIndex],
-                  title: lesson.title || degree.courses[index].chapters[chapterIndex].lessons[lessonIndex].title,
-                  test: lesson.test || degree.courses[index].chapters[chapterIndex].lessons[lessonIndex].test,
-                })),
-              })),
-            }));
-      
-            await degree.save();
-    
-            res.status(200).json({
-              message: "Degree updated successfully",
-              degree,
-            });
           } catch (error) {
-            console.error("Error updating degree:", error);
-            res.status(500).json({
-              message: "Failed to update degree",
-              error: error.message,
-            });
-          }finally {
-                  try {
-                await Promise.all(
-                tempFiles.map(async (filePath) => {
-              
-                  const fileExists = await fs.access(filePath).then(() => true).catch(() => false);
-                  if (fileExists) {
-                    await fs.unlink(filePath); 
-                    console.log(`Temporary file deleted: ${filePath}`);
-                  } else {
-                    console.warn(`Temp file not found for deletion: ${filePath}`);
-                  }
-                } catch (error) {
-                  console.error(`Failed to delete temp file: ${filePath}`, error);
-                }
-              })
-            );
+            console.error(`Failed to delete temp file: ${filePath}`, error);
           }
-        }
+        })
       );
+    } catch (error) {
+      console.error("Error during cleanup of temporary files", error);
+    }
+  }
+});
+
+
+router.put(
+  "/:id",
+  upload.fields([
+    { name: "degreeThumbnail", maxCount: 1 },
+    { name: "courseThumbnails", maxCount: 10 },
+    { name: "lessonFiles", maxCount: 10 },
+  ]),
+  async (req, res) => {
+    const tempFiles = [];
+    try {
+      const { id } = req.params;
+      const { title, description, price, courses } = req.body;
+
+      if (!title || !description || !price || !courses) {
+        return res.status(400).json({ message: "Missing required degree fields" });
+      }
+
+      // Find degree by ID
+      const degree = await Degree.findById(id);
+      if (!degree) {
+        return res.status(404).json({ message: "Degree not found" });
+      }
+
+      // Handle Degree Thumbnail upload
+      const uploadedDegreeThumbnail = req.files["degreeThumbnail"];
+      if (uploadedDegreeThumbnail && uploadedDegreeThumbnail.length > 0) {
+        const filePath = uploadedDegreeThumbnail[0].path;
+        const fileName = uploadedDegreeThumbnail[0].originalname;
+        degree.thumbnail = await uploadFile(filePath, fileName);
+        tempFiles.push(filePath);
+      }
+
+      // Handle Course Thumbnails upload
+      const uploadedCourseThumbnails = req.files["courseThumbnails"] || [];
+      if (uploadedCourseThumbnails.length > 0) {
+        const uploadedCourseThumbnailsUrls = await Promise.all(
+          uploadedCourseThumbnails.map(async (file) => {
+            const filePath = file.path;
+            const fileName = file.originalname;
+            tempFiles.push(filePath);
+            return await uploadFile(filePath, fileName);
+          })
+        );
+        degree.courses.forEach((course, index) => {
+          if (uploadedCourseThumbnailsUrls[index]) {
+            course.thumbnail = uploadedCourseThumbnailsUrls[index];
+          }
+        });
+      }
+
+      // Handle Lesson Files upload
+      const uploadedLessonFiles = req.files["lessonFiles"] || [];
+      if (uploadedLessonFiles.length > 0) {
+        const uploadedLessonFilesUrls = await Promise.all(
+          uploadedLessonFiles.map(async (file) => {
+            const filePath = file.path;
+            const fileName = file.originalname;
+            tempFiles.push(filePath);
+            return await uploadFile2(filePath, fileName);
+          })
+        );
+        degree.courses.forEach((course) => {
+          course.chapters.forEach((chapter) => {
+            chapter.lessons.forEach((lesson, lessonIndex) => {
+              const fileMetadata = uploadedLessonFilesUrls[lessonIndex] || {};
+              lesson.file = fileMetadata.url || lesson.file;
+              lesson.fileType = fileMetadata.type || lesson.fileType;
+            });
+          });
+        });
+      }
+
+      // Update Degree details
+      degree.title = title || degree.title;
+      degree.description = description || degree.description;
+      degree.price = price || degree.price;
+
+      const parsedCourses = JSON.parse(courses);
+      degree.courses = parsedCourses.map((course, index) => ({
+        ...degree.courses[index],
+        title: course.title || degree.courses[index].title,
+        description: course.description || degree.courses[index].description,
+        test: course.test || degree.courses[index].test,
+        overviewPoints: course.overviewPoints || degree.courses[index].overviewPoints,
+        chapters: course.chapters.map((chapter, chapterIndex) => ({
+          ...degree.courses[index].chapters[chapterIndex],
+          title: chapter.title || degree.courses[index].chapters[chapterIndex].title,
+          description: chapter.description || degree.courses[index].chapters[chapterIndex].description,
+          lessons: chapter.lessons.map((lesson, lessonIndex) => ({
+            ...degree.courses[index].chapters[chapterIndex].lessons[lessonIndex],
+            title: lesson.title || degree.courses[index].chapters[chapterIndex].lessons[lessonIndex].title,
+            test: lesson.test || degree.courses[index].chapters[chapterIndex].lessons[lessonIndex].test,
+          })),
+        })),
+      }));
+
+      await degree.save();
+
+      res.status(200).json({
+        message: "Degree updated successfully",
+        degree,
+      });
+    } catch (error) {
+      console.error("Error updating degree:", error);
+      res.status(500).json({
+        message: "Failed to update degree",
+        error: error.message,
+      });
+    } finally {
+      // Cleanup temporary files
+      try {
+        await Promise.all(
+          tempFiles.map(async (filePath) => {
+            try {
+              const fileExists = await fs.access(filePath).then(() => true).catch(() => false);
+              if (fileExists) {
+                await fs.unlink(filePath); 
+                console.log(`Temporary file deleted: ${filePath}`);
+              } else {
+                console.warn(`Temp file not found for deletion: ${filePath}`);
+              }
+            } catch (error) {
+              console.error(`Failed to delete temp file: ${filePath}`, error);
+            }
+          })
+        );
+      } catch (error) {
+        console.error("Error during cleanup of temporary files", error);
+      }
+    }
+  }
+);
 
       
 
