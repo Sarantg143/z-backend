@@ -227,10 +227,9 @@ router.post("/", upload.fields([
       error: error.message,
     });
   } finally {
-    
+  try {
     await Promise.all(
       tempFiles.map(async (filePath) => {
-        try {
       
           const fileExists = await fs.access(filePath).then(() => true).catch(() => false);
           if (fileExists) {
@@ -349,11 +348,10 @@ router.put( "/:id", upload.fields([
               message: "Failed to update degree",
               error: error.message,
             });
-          } finally {
-            
-            await Promise.all(
-              tempFiles.map(async (filePath) => {
-                try {
+          }finally {
+                  try {
+                await Promise.all(
+                tempFiles.map(async (filePath) => {
               
                   const fileExists = await fs.access(filePath).then(() => true).catch(() => false);
                   if (fileExists) {
