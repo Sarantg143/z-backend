@@ -8,7 +8,7 @@ const { deleteTempFile } = require("../utils/tempUtils");
 const multer = require("multer");
 const path = require("path");
 const { auth } = require("../firebaseConfig");
-const { updateLessonProgress, calculateDegreeCompletion } = require('../utils/progress');
+const { updateDegreeProgress, calculateDegreeCompletion ,updateLessonProgress} = require('../utils/progress');
 
 const router = express.Router();
 const upload = multer({ dest: path.join(__dirname, "../temp") });
@@ -389,31 +389,56 @@ router.get("/:id", async (req, res) => {
 
 // Update lesson progress
 router.post('/progress', async (req, res) => {
-  const { userId, degreeId, courseIndex, chapterIndex, lessonIndex } = req.body;
+  const { userId, degreeId, lessonId } = req.body;
 
   try {
-    const result = await updateLessonProgress(userId, degreeId, courseIndex, chapterIndex, lessonIndex);
-    res.status(200).json({
-      message: 'Progress updated successfully',
-      watchedPercentage: result.watchedPercentage,
-      degreeProgress: result.degreeProgress,
-    });
+    const progress = await updateLessonProgress(userId, degreeId, lessonId);
+    res.status(200).json({ message: 'Progress updated', progress });
   } catch (error) {
-    res.status(500).json({ message: 'Error updating progress', error });
+    res.status(500).json({ message: error.message });
   }
 });
 
-// Get degree progress
 router.get('/progress/:userId/:degreeId', async (req, res) => {
   const { userId, degreeId } = req.params;
 
   try {
-    const progress = await calculateDegreeCompletion(userId, degreeId);
-    res.status(200).json(progress);
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const degreeProgress = user.degreeProgress.find(
+      progress => progress.degreeId.toString() === degreeId
+    );
+
+    if (!degreeProgress) {
+      return res.status(404).json({ message: 'Degree progress not found for the user' });
+    }
+
+    const degree = await Degree.findById(degreeId);
+    if (!degree) {
+      return res.status(404).json({ message: 'Degree not found' });
+    }
+
+    const response = {
+      degreeDetails: {
+        degreeId: degree._id,
+        title: degree.title,
+        description: degree.description,
+        thumbnail: degree.thumbnail,
+        price: degree.price
+      },
+      degreeProgress
+    };
+
+    res.status(200).json(response);
   } catch (error) {
-    res.status(500).json({ message: 'Error retrieving progress', error });
+    console.error(error.message);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 
 
 router.get('/:id/watchPercent', async (req, res) => {

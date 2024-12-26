@@ -16,135 +16,211 @@ const fetchById = async (Model, id, entityName) => {
   return document;
 };
 
-const updateLessonProgress = async (userId, degreeId, courseIndex, chapterIndex, lessonIndex) => {
+const updateDegreeProgress = async (userId, degreeId, courseId, chapterIndex, lessonIndex) => {
   try {
-      // Fetch the user
-      const user = await fetchById(User, userId, "User");
+    const user = await User.findById(userId);
 
-      // Find the degreeProgress for the given degreeId
-      let degreeProgress = user.degreeProgress.find((dp) => dp.degreeId.equals(degreeId));
+    // Step 1: Find or initialize degreeProgress
+    let degreeProgress = user.degreeProgress.find((dp) => dp.degreeId.equals(degreeId));
+    if (!degreeProgress) {
+      degreeProgress = {
+        degreeId,
+        courses: [],
+        watchedPercentage: 0,
+      };
+      user.degreeProgress.push(degreeProgress);
+    }
 
-      if (!degreeProgress) {
-          console.log("Initializing degreeProgress for degreeId:", degreeId);
+    // Step 2: Find or initialize course progress
+    let courseProgress = degreeProgress.courses.find((course) => course.courseId.equals(courseId));
+    if (!courseProgress) {
+      courseProgress = {
+        courseId,
+        chapters: [],
+      };
+      degreeProgress.courses.push(courseProgress);
+    }
 
-          // Fetch the degree structure
-          const degree = await fetchById(Degree, degreeId, "Degree");
+    // Step 3: Find or initialize chapter progress
+    let chapterProgress = courseProgress.chapters.find((chapter) => chapter.chapterId === chapterIndex);
+    if (!chapterProgress) {
+      chapterProgress = {
+        chapterId: chapterIndex,
+        lessons: [],
+      };
+      courseProgress.chapters.push(chapterProgress);
+    }
 
-          degreeProgress = {
-              degreeId: degree._id, // Use degree._id from fetched degree
-              courses: degree.courses.map((course) => ({
-                  courseId: course.courseId,
-                  chapters: course.chapters.map((chapter) => ({
-                      chapterId: chapter.chapterId,
-                      lessons: chapter.lessons.map((lesson) => ({
-                          lessonId: lesson.lessonId,
-                          watched: false,
-                          watchedAt: null,
-                      })),
-                  })),
-                  watchedPercentage: 0,
-              })),
-              watchedPercentage: 0,
-          };
+    // Step 4: Find or initialize lesson progress
+    let lessonProgress = chapterProgress.lessons.find((lesson) => lesson.lessonId === lessonIndex);
+    if (!lessonProgress) {
+      lessonProgress = {
+        lessonId: lessonIndex,
+        watched: false,
+        watchedAt: null,
+      };
+      chapterProgress.lessons.push(lessonProgress);
+    }
 
-          user.degreeProgress.push(degreeProgress);
-      }
-
-      // Check if courseProgress exists
-      const courseProgress = degreeProgress.courses[courseIndex];
-      if (!courseProgress) {
-          throw new Error(`Course at index ${courseIndex} does not exist`);
-      }
-
-      // Check if chapterProgress exists
-      const chapterProgress = courseProgress.chapters[chapterIndex];
-      if (!chapterProgress) {
-          throw new Error(`Chapter at index ${chapterIndex} does not exist`);
-      }
-
-      // Check if lessonProgress exists
-      const lessonProgress = chapterProgress.lessons[lessonIndex];
-      if (!lessonProgress) {
-          throw new Error(`Lesson at index ${lessonIndex} does not exist`);
-      }
-
-      // Mark the lesson as watched
+    // Step 5: Update lesson progress
+    if (!lessonProgress.watched) {
       lessonProgress.watched = true;
       lessonProgress.watchedAt = new Date();
+    }
 
-      // Recalculate watched percentage for the course
-      const totalLessons = chapterProgress.lessons.length;
-      const watchedLessons = chapterProgress.lessons.filter((lesson) => lesson.watched).length;
-      courseProgress.watchedPercentage = totalLessons > 0 ? (watchedLessons / totalLessons) * 100 : 0;
+    // Step 6: Recalculate watched percentage
+    const totalLessons = user.degreeProgress.reduce((total, dp) => {
+      if (!dp.degreeId.equals(degreeId)) return total;
+      return total + dp.courses.reduce((courseTotal, course) => {
+        return courseTotal + course.chapters.reduce((chapterTotal, chapter) => {
+          return chapterTotal + chapter.lessons.length;
+        }, 0);
+      }, 0);
+    }, 0);
 
-      // Recalculate watched percentage for the degree
-      let totalDegreeLessons = 0;
-      let totalDegreeWatchedLessons = 0;
+    const watchedLessons = user.degreeProgress.reduce((watched, dp) => {
+      if (!dp.degreeId.equals(degreeId)) return watched;
+      return watched + dp.courses.reduce((courseWatched, course) => {
+        return courseWatched + course.chapters.reduce((chapterWatched, chapter) => {
+          return chapterWatched + chapter.lessons.filter((lesson) => lesson.watched).length;
+        }, 0);
+      }, 0);
+    }, 0);
 
-      degreeProgress.courses.forEach((course) => {
-          course.chapters.forEach((chapter) => {
-              totalDegreeLessons += chapter.lessons.length;
-              totalDegreeWatchedLessons += chapter.lessons.filter((lesson) => lesson.watched).length;
-          });
-      });
+    degreeProgress.watchedPercentage = totalLessons > 0 ? ((watchedLessons / totalLessons) * 100).toFixed(2) : 0;
 
-      degreeProgress.watchedPercentage =
-          totalDegreeLessons > 0 ? ((totalDegreeWatchedLessons / totalDegreeLessons) * 100).toFixed(2) : 0;
+    // Save the user document
+    await user.save();
 
-      // Mark `degreeProgress` as modified
-      user.markModified("degreeProgress");
-
-      // Save the user document
-      await user.save();
-
-      return {
-          message: "Progress updated successfully",
-          watchedPercentage: degreeProgress.watchedPercentage,
-          degreeProgress,
-      };
+    return {
+      watchedPercentage: degreeProgress.watchedPercentage,
+      degreeProgress,
+    };
   } catch (error) {
-      console.error("Error updating lesson progress:", error);
-      throw error; // Rethrow for higher-level handling
+    console.error("Error updating degree progress:", error);
+    throw error;
   }
 };
 
 
 
+const calculateDegreeCompletion = async (userId, degreeId) => {
+  try {
+    const user = await User.findById(userId).populate('degreeProgress.degreeId');
+    const degreeProgress = user.degreeProgress.find((dp) => dp.degreeId.equals(degreeId));
 
+    if (!degreeProgress) {
+      return { watchedPercentage: 0, courses: [] };
+    }
 
-  
-  
-  
-  
-  
-  const calculateDegreeCompletion = async (userId, degreeId) => {
-    try {
-      const user = await User.findById(userId).populate('degreeProgress.degreeId');
-      const degreeProgress = user.degreeProgress.find(dp => dp.degreeId.equals(degreeId));
-  
-      if (!degreeProgress) {
-        return { watchedPercentage: 0, courses: [] };
-      }
-  
-      return {
-        watchedPercentage: degreeProgress.watchedPercentage,
-        courses: degreeProgress.courses.map(course => ({
-          courseId: course.courseId,
-          watchedPercentage: course.watchedPercentage,  
-          chapters: course.chapters.map(chapter => ({
-            chapterId: chapter.chapterId,
-            lessons: chapter.lessons.map(lesson => ({
-              lessonId: lesson.lessonId,
-              watched: lesson.watched,
-            })),
+    return {
+      watchedPercentage: degreeProgress.watchedPercentage,
+      courses: degreeProgress.courses.map((course) => ({
+        courseId: course.courseId,
+        chapters: course.chapters.map((chapter) => ({
+          chapterId: chapter.chapterId,
+          lessons: chapter.lessons.map((lesson) => ({
+            lessonId: lesson.lessonId,
+            watched: lesson.watched,
           })),
         })),
-      };
-    } catch (error) {
-      console.error('Error calculating degree completion:', error);
-      throw error;
+      })),
+    };
+  } catch (error) {
+    console.error("Error calculating degree progress:", error);
+    throw error;
+  }
+};
+
+
+const updateLessonProgress = async (userId, degreeId, lessonId) => {
+  try {
+    const user = await User.findOne({ _id: userId });
+
+    if (!user) {
+      throw new Error('User not found');
     }
-  };
+
+    // Check if the degreeProgress exists for the given degreeId
+    let degreeProgress = user.degreeProgress.find(
+      progress => progress.degreeId.toString() === degreeId
+    );
+
+    if (!degreeProgress) {
+      // Initialize the degree progress if it doesn't exist
+      const degree = await Degree.findOne({ _id: degreeId });
+      if (!degree) {
+        throw new Error('Degree not found');
+      }
+
+      // Initialize degreeProgress structure
+      degreeProgress = {
+        degreeId: degree._id,
+        isDegreeComplete: false,
+        progressPercentage: 0,
+        courses: degree.courses.map(course => ({
+          courseId: course.courseId,
+          isComplete: false,
+          progressPercentage: 0,
+          chapters: course.chapters.map(chapter => ({
+            chapterId: chapter.chapterId,
+            isComplete: false,
+            progressPercentage: 0,
+            lessons: chapter.lessons.map(lesson => ({
+              lessonId: lesson.lessonId,
+              isComplete: false
+            }))
+          }))
+        }))
+      };
+
+      // Add to user's degreeProgress
+      user.degreeProgress.push(degreeProgress);
+    }
+
+    // Update the lesson progress
+    let totalLessons = 0;
+    let completedLessons = 0;
+
+    degreeProgress.courses.forEach(course => {
+      course.chapters.forEach(chapter => {
+        chapter.lessons.forEach(lesson => {
+          totalLessons++;
+          if (lesson.lessonId.toString() === lessonId) {
+            lesson.isComplete = true; // Mark this lesson as complete
+          }
+          if (lesson.isComplete) completedLessons++;
+        });
+
+        // Update chapter completion status
+        chapter.isComplete = chapter.lessons.every(lesson => lesson.isComplete);
+        chapter.progressPercentage = Math.round(
+          (chapter.lessons.filter(lesson => lesson.isComplete).length / chapter.lessons.length) * 100
+        );
+      });
+
+      // Update course completion status
+      course.isComplete = course.chapters.every(chapter => chapter.isComplete);
+      course.progressPercentage = Math.round(
+        (course.chapters.filter(chapter => chapter.isComplete).length / course.chapters.length) * 100
+      );
+    });
+
+    // Update degree progress
+    degreeProgress.isDegreeComplete = degreeProgress.courses.every(course => course.isComplete);
+    degreeProgress.progressPercentage = Math.round((completedLessons / totalLessons) * 100);
+
+    // Save updated progress
+    await user.save();
+
+    return degreeProgress;
+  } catch (error) {
+    console.error('Error updating progress:', error.message);
+    throw new Error(error.message);
+  }
+};
+
+
   
 
-module.exports = {updateLessonProgress,calculateDegreeCompletion};
+module.exports = {updateDegreeProgress,calculateDegreeCompletion,updateLessonProgress};
