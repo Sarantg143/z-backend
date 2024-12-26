@@ -17,11 +17,11 @@ const lessonSchema = new Schema(
     test: {
       type: {
         type: String, // "MCQ" or "QuestionAnswer"
-        required: true,
+        required: false,
       },
       questions: [
         {
-          question: { type: String, required: true },
+          question: { type: String, required: false },
           options: [{ type: String }],
           correctAnswer: { type: String },
           answer: { type: String }, 
@@ -53,11 +53,11 @@ const courseSchema = new Schema(
     test: {
       type: {
         type: String, // "MCQ" or "QuestionAnswer"
-        required: true,
+        required: false,
       },
       questions: [
         {
-          question: { type: String, required: true },
+          question: { type: String, required: false },
           options: [{ type: String }], 
           correctAnswer: { type: String }, 
           answer: { type: String }, 
