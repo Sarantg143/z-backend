@@ -183,7 +183,7 @@ router.post("/",upload.fields([
           return await uploadFile2(filePath, fileName); 
         })
       );
-
+      let globalLessonIndex = 0;
       const newDegree = new Degree({
         degreeId: new mongoose.Types.ObjectId(),
         title,
@@ -201,8 +201,9 @@ router.post("/",upload.fields([
             chapterId: new mongoose.Types.ObjectId(),
             title: chapter.title,
             description: chapter.description,
-            lessons: chapter.lessons.map((lesson, lessonIndex) => {
-              const fileMetadata = lessonFilesUrls[lessonIndex] || {};
+            lessons: chapter.lessons.map((lesson) => {
+              const fileMetadata = lessonFilesUrls[globalLessonIndex] || {}; // Fetch file by global index
+              globalLessonIndex++;
               return {
                 lessonId: new mongoose.Types.ObjectId(),
                 title: lesson.title,
