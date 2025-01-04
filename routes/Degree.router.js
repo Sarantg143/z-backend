@@ -133,55 +133,51 @@ const getFileType = (fileName) => {
   return "unknown"; 
 };
 
+const saveBase64AsFile = async (base64, fileName) => {
+  const matches = base64.match(/^data:(.+);base64,(.+)$/);
+  if (!matches) throw new Error("Invalid base64 string");
+  const buffer = Buffer.from(matches[2], "base64");
+  const filePath = path.join(__dirname, "../temp", fileName);
+  await fs.writeFile(filePath, buffer);
+  return filePath;
+};
+
 const upload = multer({dest: path.join(__dirname, "../temp"), 
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
 });
 
-router.post("/",upload.fields([
-    { name: "degreeThumbnail", maxCount: 1 }, 
-    { name: "courseThumbnails" }, 
-    { name: "lessonFiles" }, 
-  ]),
-  async (req, res) => {
-    const tempFiles = []; 
-
-    try {
-      const { title, description, price, courses } = req.body;
+router.post("/", async (req, res) => {
+  const tempFiles = [];
+  try {
+      const { title, description, price, courses, degreeThumbnail, courseThumbnails, lessonFiles } = req.body;
 
       if (!title || !description || !price || !courses) {
-        return res.status(400).json({ message: "Missing required fields" });
+          return res.status(400).json({ message: "Missing required fields" });
       }
 
       const parsedCourses = JSON.parse(courses);
 
-      const uploadedDegreeThumbnail = req.files["degreeThumbnail"]?.[0];
       let degreeThumbnailUrl = null;
-
-      if (uploadedDegreeThumbnail) {
-        const filePath = uploadedDegreeThumbnail.path;
-        tempFiles.push(filePath); 
-        const fileName = uploadedDegreeThumbnail.originalname;
-        degreeThumbnailUrl = await uploadFile(filePath, fileName);
+      if (degreeThumbnail) {
+          const filePath = await saveBase64AsFile(degreeThumbnail.data, degreeThumbnail.name);
+          tempFiles.push(filePath);
+          degreeThumbnailUrl = await uploadFile(filePath, degreeThumbnail.name);
       }
 
-      const uploadedCourseThumbnails = req.files["courseThumbnails"] || [];
       const courseThumbnailsUrls = await Promise.all(
-        uploadedCourseThumbnails.map(async (file) => {
-          const filePath = file.path;
-          tempFiles.push(filePath); 
-          const fileName = file.originalname;
-          return await uploadFile(filePath, fileName);
-        })
+          (courseThumbnails || []).map(async (file) => {
+              const filePath = await saveBase64AsFile(file.data, file.name);
+              tempFiles.push(filePath);
+              return await uploadFile(filePath, file.name);
+          })
       );
 
-      const uploadedLessonFiles = req.files["lessonFiles"] || [];
       const lessonFilesUrls = await Promise.all(
-        uploadedLessonFiles.map(async (file) => {
-          const filePath = file.path;
-          tempFiles.push(filePath); 
-          const fileName = file.originalname;
-          return await uploadFile2(filePath, fileName); 
-        })
+          (lessonFiles || []).map(async (file) => {
+              const filePath = await saveBase64AsFile(file.data, file.name);
+              tempFiles.push(filePath);
+              return await uploadFile2(filePath, file.name);
+          })
       );
       let globalLessonIndex = 0;
       const newDegree = new Degree({
