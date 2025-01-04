@@ -146,7 +146,9 @@ const upload = multer({dest: path.join(__dirname, "../temp"),
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
 });
 
-router.post("/", async (req, res) => {
+router.post("/",upload.fields([
+  { name: "degreeThumbnail", maxCount: 1 }, 
+]), async (req, res) => {
   const tempFiles = [];
   try {
       const { title, description, price, courses, courseThumbnails, lessonFiles } = req.body;
