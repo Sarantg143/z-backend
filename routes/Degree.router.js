@@ -149,7 +149,7 @@ const upload = multer({dest: path.join(__dirname, "../temp"),
 router.post("/", async (req, res) => {
   const tempFiles = [];
   try {
-      const { title, description, price, courses, degreeThumbnail, courseThumbnails, lessonFiles } = req.body;
+      const { title, description, price, courses, courseThumbnails, lessonFiles } = req.body;
 
       if (!title || !description || !price || !courses) {
           return res.status(400).json({ message: "Missing required fields" });
@@ -157,11 +157,14 @@ router.post("/", async (req, res) => {
 
       const parsedCourses = JSON.parse(courses);
 
+      const uploadedDegreeThumbnail = req.files["degreeThumbnail"]?.[0];
       let degreeThumbnailUrl = null;
-      if (degreeThumbnail) {
-          const filePath = await saveBase64AsFile(degreeThumbnail.data, degreeThumbnail.name);
-          tempFiles.push(filePath);
-          degreeThumbnailUrl = await uploadFile(filePath, degreeThumbnail.name);
+
+      if (uploadedDegreeThumbnail) {
+        const filePath = uploadedDegreeThumbnail.path;
+        tempFiles.push(filePath); 
+        const fileName = uploadedDegreeThumbnail.originalname;
+        degreeThumbnailUrl = await uploadFile(filePath, fileName);
       }
 
       const courseThumbnailsUrls = await Promise.all(
