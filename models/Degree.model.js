@@ -1,33 +1,43 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
+const testSchema = new Schema({
+  type: {
+    type: String, // "MCQ" or "QuestionAnswer"
+    required: false,
+  },
+  questions: [
+    {
+      question: { type: String, required: false },
+      options: [{ type: String }],
+      correctAnswer: { type: String },
+    },
+  ],
+});
+
+// SubLesson Schema
+const subLessonSchema = new Schema(
+  {
+    subLessonId: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
+    title: { type: String, required: false },
+    file: { type: String },
+    fileType: { type: String },
+    duration: { type: Number },
+    test: testSchema,
+  },
+  { timestamps: true }
+);
+
 // Lesson Schema
 const lessonSchema = new Schema(
   {
-    // lessonId: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
     lessonId: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
-    title: { type: String, required: true },
-    file: { 
-      type: String, 
-      required: false, },
+    title: { type: String, required: false },
+    file: { type: String },
     fileType: { type: String },
-    duration: { 
-      type: Number, 
-      required: false, },
-    test: {
-      type: {
-        type: String, // "MCQ" or "QuestionAnswer"
-        required: false,
-      },
-      questions: [
-        {
-          question: { type: String, required: false },
-          options: [{ type: String }],
-          correctAnswer: { type: String },
-          answer: { type: String }, 
-        },
-      ],
-    },
+    duration: { type: Number },
+    subLessons: { type: [subLessonSchema], default: [] },
+    test: testSchema,
   },
   { timestamps: true }
 );
@@ -38,7 +48,8 @@ const chapterSchema = new Schema(
     chapterId: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
     title: { type: String, required: true },
     description: { type: String },
-    lessons: [lessonSchema], // Array of lessons
+    lessons: { type: [lessonSchema], default: [] },  // Array of lessons
+    test: testSchema,
   },
   { timestamps: true }
 );
@@ -50,20 +61,6 @@ const courseSchema = new Schema(
     title: { type: String, required: true },
     description: { type: String },
     thumbnail: { type: String }, // URL for course thumbnail
-    test: {
-      type: {
-        type: String, // "MCQ" or "QuestionAnswer"
-        required: false,
-      },
-      questions: [
-        {
-          question: { type: String, required: false },
-          options: [{ type: String }], 
-          correctAnswer: { type: String }, 
-          answer: { type: String }, 
-        },
-      ],
-    },
     overviewPoints: [
       {
         title: { type: String },
@@ -71,6 +68,7 @@ const courseSchema = new Schema(
       },
     ],
     chapters: [chapterSchema], // Array of chapters
+    test: testSchema,
   },
   { timestamps: true }
 );
@@ -87,6 +85,5 @@ const degreeSchema = new Schema(
   },
   { timestamps: true }
 );
-
 
 module.exports = mongoose.model("Degree", degreeSchema);

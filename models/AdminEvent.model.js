@@ -1,6 +1,12 @@
 const mongoose = require("mongoose");
 
 const AdminEventSchema = new mongoose.Schema({
+    degreeId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Degree',
+        required: true,
+      },
+
     title : {
         type : String,
         required : [true , "Event title is required"],

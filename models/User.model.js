@@ -10,11 +10,8 @@ const userSchema = new mongoose.Schema({
   dob: { type: Date },
   gender: { type: String },
   applyingFor: { type: String },
-  //applyingFor: { 
- //   degreeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Degree' },
- //   title: { type: String }},
   profilePic: {type: String},
-  profileBanner: {type: String},
+  profileBanner: {type: String, default: null},
   educationalQualification: { type: String },
   theologicalQualification: { type: String },
   presentAddress: { type: String },
@@ -28,17 +25,8 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   role: { type: String, default: 'client' },
   details: { type : Boolean, default:false},
-  watchPercent: { type: Number, min: 0, max: 100 },
-  degreeProgress: [DegreeProgressSchema],
-   degrees: [
-    {
-      degreeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Degree' },
-      title: { type: String }, 
-      completionPercentage: { type: Number, default: 0 }, 
-      courses: [{
-          courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
-          title: { type: String }, 
-          completionPercentage: { type: Number, default: 0 }, },],},],
+  degreeProgress:  {type: [DegreeProgressSchema], default: [] },
+
 });
 
 
