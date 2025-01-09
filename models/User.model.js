@@ -25,6 +25,8 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   role: { type: String, default: 'client' },
   details: { type : Boolean, default:false},
+  adminAuth: { type : Boolean, default:false},
+  socialMediaId: {type: String,required: [false, 'Social media ID required'],unique: true,sparse: true  },
   degreeProgress:  {type: [DegreeProgressSchema], default: [] },
 
 });

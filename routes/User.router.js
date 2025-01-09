@@ -50,7 +50,6 @@ router.post("/signup", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const { username, email, password } = req.body;
-
     const user = await User.findOne({
       $or: [{ username }, { email }],
     });
@@ -58,27 +57,18 @@ router.post("/login", async (req, res) => {
     if (!user) {
       return res.status(404).send({ message: "User not found." });
     }
-
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).send({ message: "Invalid credentials." });
+      return res.status(401).send({ message: "Invalid username or password." });
     }
-
-    const token = jwt.sign(
-      { userId: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
 
     res.status(200).send({
       message: "Login successful.",
-      token,
-      user: { 
-        id: user._id, 
+      user: { id: user._id, 
         email: user.email, 
         username: user.username, 
-        role: user.role 
-        
+        role: user.role,
+        adminAuth: user.adminAuth,
       },
     });
   } catch (error) {
@@ -88,61 +78,59 @@ router.post("/login", async (req, res) => {
 });
 
 // Google Login Route
-router.post("/google-login", async (req, res) => {
+router.post('/google', async (req, res) => {
   try {
-    const { email, username } = req.body;
-    let user = await User.findOne({ email });
-    if (!user) {
-      user = new User({ email, username });
-      await user.save();
-    }
-
-    const token = jwt.sign(
-      { userId: user._id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-
-    res.status(200).send({
-      message: "Google login successful.",
-      token,
-      user: { id: user._id, email: user.email, username: user.username },
+    const { email } = req.body;
+    const existingUser= await User.findOne({
+      $or: [{ email }, { name: email }],
     });
-  } catch (error) {
-    console.error("Error during Google login:", error);
-    res.status(500).send({ message: "Google login failed.", error: error.message });
+
+    if (existingUser) {
+      return res.status(200).json({ exists: true, message: 'Email already exists in the database' });
+    } else {
+      return res.status(200).json({ exists: false, message: 'Email is available' });
+    }
+  } catch (err) {
+    console.log(err.stack);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-router.post("/forgot-password", async (req, res) => {
+router.put('/:id/resetpass', async (req, res) => {
   try {
-    const { email } = req.body;
+    const { id } = req.params;
+    const { newPassword } = req.body;
 
-    if (!email) {
-      return res.status(400).send({ message: "Email is required." });
+    if (!newPassword) {
+      return res.status(400).json({ success: false, message: 'New password is required' });
     }
-    const actionCodeSettings = {
-      url: "http://your-frontend-url.com/login", 
-      handleCodeInApp: false,  
-    };
-    const resetLink = await auth.generatePasswordResetLink(email, actionCodeSettings);
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    user.password = newPassword;
+    await user.save();
 
-    console.log(`Password reset link for ${email}: ${resetLink}`);
-
-    res.status(200).send({
-      message: "Password reset email sent successfully. Please check your inbox.",
-    });
+    res.status(200).json({ success: true, message: 'Password reset successfully' });
   } catch (error) {
-    console.error("Error sending password reset email:", error);
+    console.error('Error resetting password:', error);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+});
 
-    if (error.code === "auth/user-not-found") {
-      return res.status(404).send({ message: "No user found with this email." });
+router.post("/verify-reset-link", async (req, res) => {
+  const { oobCode } = req.body;
+  try {
+    const email = await verifyPasswordResetCode(auth, oobCode);
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
     }
-
-    res.status(500).send({
-      message: "Failed to send password reset email.",
-      error: error.message,
-    });
+    res.status(200).json({ success: true, userId: user._id });
+  } catch (err) {
+    console.error("Error verifying reset link:", err);
+    res.status(400).json({ success: false, message: err.message });
   }
 });
 
@@ -440,56 +428,29 @@ router.get('/progress/:userId/:degreeId', async (req, res) => {
 });
 
 
+router.put('/adminAuth/:id', async (req, res) => {
+  const { id } = req.params;
 
-router.get('/:id/watchPercent', async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.json({ watchPercent: user.watchPercent });
+    user.adminAuth = !user.adminAuth;
+    await user.save();
+
+    res.status(200).json({ 
+      message: 'User adminAuth status updated successfully', 
+      user: {
+        id: user._id,
+        name: `${user.firstName} ${user.lastName}`,
+        adminAuth: user.adminAuth
+      }
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error retrieving watchPercent', error });
+    res.status(500).json({ message: 'Error updating adminAuth status', error: error.message });
   }
 });
 
-
-router.put('/:id/watchPercent', async (req, res) => {
-  const { watchPercent } = req.body;
-  if (typeof watchPercent !== 'number' || watchPercent < 0 || watchPercent > 100) {
-    return res.status(400).json({ message: 'watchPercent must be a number between 0 and 100' });
-  }
-
-  try {
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { watchPercent },
-      { new: true, runValidators: true }
-    );
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    res.json({ message: 'watchPercent updated successfully', watchPercent: user.watchPercent });
-  } catch (error) {
-    res.status(500).json({ message: 'Error updating watchPercent', error });
-  }
-});
-
-
-router.delete('/:id/watchPercent', async (req, res) => {
-  try {
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { $unset: { watchPercent: 1 } }, 
-      { new: true }
-    );
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    res.json({ message: 'watchPercent deleted successfully', user });
-  } catch (error) {
-    res.status(500).json({ message: 'Error deleting watchPercent', error });
-  }
-});
 
 module.exports = router;
