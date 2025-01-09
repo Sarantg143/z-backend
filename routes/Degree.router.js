@@ -30,7 +30,12 @@ router.post("/",upload.fields([
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      const parsedCourses = JSON.parse(courses);
+      let parsedCourses;
+      try {
+        parsedCourses = JSON.parse(courses);
+      } catch (error) {
+        return res.status(400).json({ message: "Invalid courses format" });
+      }
 
       const uploadedDegreeThumbnail = req.files["degreeThumbnail"]?.[0];
       let degreeThumbnailUrl = null;
@@ -91,7 +96,8 @@ router.post("/",upload.fields([
           chapters: course.chapters.map((chapter) => ({
             chapterId: new mongoose.Types.ObjectId(),
             title: chapter.title,
-            description: chapter.description,
+            description: chapter.description|| null,
+            test: chapter.test || [],
             lessons: chapter.lessons.map((lesson) => {
               const fileMetadata = lessonFilesUrls[lessonIndex] || {};
               lessonIndex++;
@@ -100,9 +106,9 @@ router.post("/",upload.fields([
                 title: lesson.title || null,
                 file: fileMetadata.url || null,
                 fileType: fileMetadata.type || null,
-                duration: lesson.duration || null,
+               
                 test: lesson.test || null,
-                subLessons: lesson.subLessons.map((subLesson) => {
+                subLessons: Array.isArray(lesson.subLessons) ? lesson.subLessons.map((subLesson) => {
                   const subLessonFileMetadata = subLessonFilesUrls[subLessonIndex] || {};
                   subLessonIndex++;
                   return {
@@ -110,10 +116,10 @@ router.post("/",upload.fields([
                     title: subLesson.title || null,
                     file: subLessonFileMetadata.url || null,
                     fileType: subLessonFileMetadata.type || null,
-                    duration: subLesson.duration || null,
+  
                     test: subLesson.test || null,
                   };
-                }),
+                }) : []
               };
             }),
           })),
