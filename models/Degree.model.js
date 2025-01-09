@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
-const testSchema = new Schema({
+const TestSchema = new Schema({
   type: {
     type: String, // "MCQ" or "QuestionAnswer"
     required: false,
@@ -23,7 +23,7 @@ const subLessonSchema = new Schema(
     file: { type: String },
     fileType: { type: String },
     duration: { type: Number },
-    test: testSchema,
+    test: [TestSchema],
   },
   { timestamps: true }
 );
@@ -37,7 +37,7 @@ const lessonSchema = new Schema(
     fileType: { type: String },
     duration: { type: Number },
     subLessons: { type: [subLessonSchema], default: [] },
-    test: testSchema,
+    test: [TestSchema],
   },
   { timestamps: true }
 );
@@ -49,7 +49,7 @@ const chapterSchema = new Schema(
     title: { type: String, required: true },
     description: { type: String },
     lessons: { type: [lessonSchema], default: [] },  // Array of lessons
-    test: testSchema,
+    test: [TestSchema],
   },
   { timestamps: true }
 );
@@ -68,7 +68,7 @@ const courseSchema = new Schema(
       },
     ],
     chapters: [chapterSchema], // Array of chapters
-    test: testSchema,
+    test: [TestSchema],
   },
   { timestamps: true }
 );
