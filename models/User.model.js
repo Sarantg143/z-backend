@@ -28,6 +28,8 @@ const userSchema = new mongoose.Schema({
   adminAuth: { type : Boolean, default:false},
   socialMediaId: {type: String,required: [false, 'Social media ID required'],unique: true,sparse: true  },
   degreeProgress:  {type: [DegreeProgressSchema], default: [] },
+  resetPasswordToken: { type: String },
+  resetPasswordExpiry: { type: Date },
 
 });
 

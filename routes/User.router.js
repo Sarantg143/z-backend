@@ -8,7 +8,7 @@ const { deleteTempFile } = require("../utils/tempUtils");
 const multer = require("multer");
 const path = require("path");
 const { auth } = require("../firebaseConfig");
-const { updateDegreeProgress, calculateDegreeCompletion ,updateLessonProgress} = require('../utils/progress');
+const { updateLessonProgress} = require('../utils/progress');
 
 const router = express.Router();
 const upload = multer({ dest: path.join(__dirname, "../temp") });
@@ -74,6 +74,137 @@ router.post("/login", async (req, res) => {
   } catch (error) {
     console.error("Error during login:", error);
     res.status(500).send({ message: "Login failed.", error: error.message });
+  }
+});
+
+
+// Google Login Route
+router.post("/auth/google", async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    // Verify the Firebase token
+    const decodedToken = await auth.verifyIdToken(token);
+    const { email, name, uid } = decodedToken;
+
+    // Check if the user already exists in the database
+    let user = await User.findOne({ email });
+
+    // If user does not exist, create a new user
+    if (!user) {
+      user = new User({
+        email,
+        username: name || email.split('@')[0], // Use email as fallback username if name is not available
+        role: 'client', // Default role
+      });
+      await user.save();
+    }
+
+    // Generate JWT token for the user
+    const jwtToken = jwt.sign(
+      { userId: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    // Respond with the JWT token and user info
+    res.status(200).send({
+      message: "Google login successful.",
+      // token: jwtToken,
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Error during Google login:", error);
+    res.status(500).send({ message: "Google login failed.", error: error.message });
+  }
+});
+
+// POST route to handle forgot password
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Generate a reset token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetTokenExpiry = Date.now() + 3600000; // 1 hour expiry
+
+    // Save the token and expiry to the user record
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpiry = resetTokenExpiry;
+    await user.save();
+
+    // Create the password reset URL
+    const resetUrl = `${process.env.CLIENT_URL}/api/users/reset-password/${resetToken}`;
+
+    // Send email using Nodemailer
+    const transporter = nodemailer.createTransport({
+      service: "Gmail", // You can use any email service
+      auth: {
+        user: process.env.EMAIL_USER, // Your email
+        pass: process.env.EMAIL_PASS, // Your email password
+      },
+    });
+
+    const mailOptions = {
+      from: "Zion Seminary" `<${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "Password Reset Request",
+      html: `
+        <p>You requested a password reset.</p>
+        <p>Click the link below to reset your password:</p>
+        <a href="${resetUrl}">Click here to reset the password..!</a>
+        <p>This link is valid for 1 hour.</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({ message: "Password reset link sent to your email." });
+  } catch (error) {
+    console.error("Error in forgot password:", error);
+    res.status(500).json({ message: "An error occurred. Please try again later." });
+  }
+});
+
+// POST route to handle reset password
+router.post("/reset-password/:token", async (req, res) => {
+  const { token } = req.params;
+  const { newPassword } = req.body;
+
+  try {
+    // Find the user with the matching reset token and check expiry
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpiry: { $gt: Date.now() }, // Check if token is still valid
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token." });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update the password
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpiry = undefined;
+    await user.save();
+
+    res.status(200).json({ message: "Password reset successful. You can now log in with your new password." });
+  } catch (error) {
+    console.error("Error in reset password:", error);
+    res.status(500).json({ message: "An error occurred. Please try again later." });
   }
 });
 
@@ -376,7 +507,7 @@ router.get("/:id", async (req, res) => {
 
 
 // Update lesson progress
-router.post('/progress', async (req, res) => {
+router.post('/progress1', async (req, res) => {
   const { userId, degreeId, lessonId } = req.body;
 
   try {
@@ -384,6 +515,17 @@ router.post('/progress', async (req, res) => {
     res.status(200).json({ message: 'Progress updated', progress });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/progress', async (req, res) => {
+  const { userId, degreeId, lessonId, subLessonId } = req.body;
+
+  try {
+    const progress = await updateLessonProgress(userId, degreeId, lessonId, subLessonId);
+    res.status(200).json({ message: 'Progress updated successfully', progress });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating progress', error: error.message });
   }
 });
 
