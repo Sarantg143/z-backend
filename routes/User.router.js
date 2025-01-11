@@ -129,6 +129,10 @@ router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
 
   try {
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
@@ -136,13 +140,25 @@ router.post("/forgot-password", async (req, res) => {
     }
 
     // Generate a reset token
-    const resetToken = crypto.randomBytes(32).toString("hex");
+    let resetToken;
+    try {
+      resetToken = crypto.randomBytes(32).toString("hex");
+    } catch (err) {
+      console.error("Error generating reset token:", err);
+      return res.status(500).json({ message: "Failed to generate reset token" });
+    }
+
     const resetTokenExpiry = Date.now() + 3600000; // 1 hour expiry
 
     // Save the token and expiry to the user record
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordExpiry = resetTokenExpiry;
-    await user.save();
+    try {
+      user.resetPasswordToken = resetToken;
+      user.resetPasswordExpiry = resetTokenExpiry;
+      await user.save();
+    } catch (err) {
+      console.error("Error saving reset token to user:", err);
+      return res.status(500).json({ message: "Failed to save reset token. Please try again." });
+    }
 
     // Create the password reset URL
     const resetUrl = `${process.env.CLIENT_URL}/api/users/reset-password/${resetToken}`;
@@ -157,7 +173,7 @@ router.post("/forgot-password", async (req, res) => {
     });
 
     const mailOptions = {
-      from: "Zion Seminary" `<${process.env.EMAIL_USER}>`,
+      from: `"Zion Seminary" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "Password Reset Request",
       html: `
@@ -168,12 +184,17 @@ router.post("/forgot-password", async (req, res) => {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (err) {
+      console.error("Error sending password reset email:", err);
+      return res.status(500).json({ message: "Failed to send password reset email. Please try again later." });
+    }
 
     res.status(200).json({ message: "Password reset link sent to your email." });
   } catch (error) {
-    console.error("Error in forgot password:", error);
-    res.status(500).json({ message: "An error occurred. Please try again later." });
+    console.error("Unexpected error in forgot-password route:", error);
+    res.status(500).json({ message: "An unexpected error occurred. Please try again later." });
   }
 });
 
