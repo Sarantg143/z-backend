@@ -142,7 +142,7 @@ router.post("/forgot-password", async (req, res) => {
     // Generate a reset token
     let resetToken;
     try {
-      resetToken = crypto.randomBytes(32).toString("hex");
+        resetToken = crypto.pseudoRandomBytes(32).toString("hex");
     } catch (err) {
       console.error("Error generating reset token:", err);
       return res.status(500).json({ message: "Failed to generate reset token" });
