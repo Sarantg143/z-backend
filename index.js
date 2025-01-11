@@ -12,6 +12,7 @@ const degreeRoutes = require("./routes/Degree.router");
 const completeRoutes = require("./routes/Completed.router");
 const eventRouter = require('./routes/Event.router');
 const adminEventRouter = require('./routes/AdminEvent.router');
+const answerRouter = require('./routes/Answer.router');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -37,6 +38,7 @@ app.use("/api/degrees",degreeRoutes);
 app.use("/api/complete",completeRoutes);
 app.use('/api/event',eventRouter);
 app.use('/api/admin-event',adminEventRouter);
+app.use('/api/answer',answerRouter);
 
 app.get("/", (req, res) => {
   res.send("Welcome to Zions API");
