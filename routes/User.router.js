@@ -130,17 +130,13 @@ router.post("/auth/google", async (req, res) => {
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
-    console.log("Received request to forgot-password route with email:", email);
-
     if (!email) {
-      console.log("No email provided");
       return res.status(400).json({ message: "Email is required" });
     }
 
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
-      console.log("User not found for email:", email);
       return res.status(404).json({ message: "User not found" });
     }
 
@@ -148,19 +144,15 @@ router.post("/forgot-password", async (req, res) => {
 
     // Generate a reset token
     const resetToken = uuidv4().replace(/-/g, "");
-    console.log("Generated reset token:", resetToken);
-
     const resetTokenExpiry = Date.now() + 3600000; // 1 hour expiry
 
     // Save the token and expiry to the user record
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpiry = resetTokenExpiry;
     await user.save();
-    console.log("Reset token saved successfully");
 
     // Create the password reset URL
     const resetUrl = `${process.env.CLIENT_URL}/api/users/reset-password/${resetToken}`;
-    console.log("Generated reset URL:", resetUrl);
 
     // Send email using Nodemailer
     const transporter = nodemailer.createTransport({
@@ -184,11 +176,8 @@ router.post("/forgot-password", async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
-    console.log("Password reset email sent successfully");
-
     res.status(200).json({ message: "Password reset link sent to your email." });
   } catch (error) {
-    console.error("Unexpected error in forgot-password route:", error.stack);
     res.status(500).json({ message: "An unexpected error occurred. Please try again later." });
   }
 });
