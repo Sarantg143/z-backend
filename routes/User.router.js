@@ -7,6 +7,7 @@ const { uploadFile } = require("../utils/fileUpload");
 const { deleteTempFile } = require("../utils/tempUtils");
 const multer = require("multer");
 const path = require("path");
+const { auth } = require("../firebaseConfig");
 const { db, bucket, admin } = require('../firebaseConfig');
 const { updateLessonProgress} = require('../utils/progress');
 const { v4: uuidv4 } = require("uuid");
