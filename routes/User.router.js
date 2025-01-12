@@ -130,46 +130,44 @@ router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
 
   try {
+    console.log("Received request to forgot-password route with email:", email);
+
     if (!email) {
+      console.log("No email provided");
       return res.status(400).json({ message: "Email is required" });
     }
 
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
+      console.log("User not found for email:", email);
       return res.status(404).json({ message: "User not found" });
     }
 
+    console.log("User found:", user);
+
     // Generate a reset token
-    let resetToken;
-    try {
-        resetToken = uuidv4().replace(/-/g, ""); 
-    } catch (err) {
-      console.error("Error generating reset token:", err);
-      return res.status(500).json({ message: "Failed to generate reset token" });
-    }
+    const resetToken = uuidv4().replace(/-/g, "");
+    console.log("Generated reset token:", resetToken);
 
     const resetTokenExpiry = Date.now() + 3600000; // 1 hour expiry
 
     // Save the token and expiry to the user record
-    try {
-      user.resetPasswordToken = resetToken;
-      user.resetPasswordExpiry = resetTokenExpiry;
-      await user.save();
-    } catch (err) {
-      console.error("Error saving reset token to user:", err);
-      return res.status(500).json({ message: "Failed to save reset token. Please try again." });
-    }
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpiry = resetTokenExpiry;
+    await user.save();
+    console.log("Reset token saved successfully");
 
     // Create the password reset URL
-    const resetUrl = `${process.env.CLIENT_URL}/api/users/reset-password/${resetToken}`;
+    const resetUrl = `https://z-backend-2xag.onrender.com/api/users/reset-password/${resetToken}`;
+    console.log("Generated reset URL:", resetUrl);
 
     // Send email using Nodemailer
     const transporter = nodemailer.createTransport({
-      service: "Gmail", // You can use any email service
+      service: "Gmail",
       auth: {
-        user: process.env.EMAIL_USER, // Your email
-        pass: process.env.EMAIL_PASS, // Your email password
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 
@@ -185,16 +183,12 @@ router.post("/forgot-password", async (req, res) => {
       `,
     };
 
-    try {
-      await transporter.sendMail(mailOptions);
-    } catch (err) {
-      console.error("Error sending password reset email:", err);
-      return res.status(500).json({ message: "Failed to send password reset email. Please try again later." });
-    }
+    await transporter.sendMail(mailOptions);
+    console.log("Password reset email sent successfully");
 
     res.status(200).json({ message: "Password reset link sent to your email." });
   } catch (error) {
-    console.error("Unexpected error in forgot-password route:", error);
+    console.error("Unexpected error in forgot-password route:", error.stack);
     res.status(500).json({ message: "An unexpected error occurred. Please try again later." });
   }
 });
