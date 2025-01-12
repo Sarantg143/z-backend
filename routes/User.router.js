@@ -159,7 +159,7 @@ router.post("/forgot-password", async (req, res) => {
     console.log("Reset token saved successfully");
 
     // Create the password reset URL
-    const resetUrl = `https://z-backend-2xag.onrender.com/api/users/reset-password/${resetToken}`;
+    const resetUrl = `${process.env.CLIENT_URL}/api/users/reset-password/${resetToken}`;
     console.log("Generated reset URL:", resetUrl);
 
     // Send email using Nodemailer
