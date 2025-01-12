@@ -127,9 +127,8 @@ router.post("/auth/google", async (req, res) => {
 
 // POST route to handle forgot password
 router.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
-
   try {
+    const { email } = req.body;
     console.log("Received request to forgot-password route with email:", email);
 
     if (!email) {
