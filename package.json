@@ -17,6 +17,7 @@
     "body-parser": "^1.20.3",
     "busboy": "^1.6.0",
     "cors": "^2.8.5",
+    "crypto": "^1.0.1",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "file-type": "^19.6.0",
@@ -27,6 +28,7 @@
     "get-media-duration": "^1.0.1",
     "mongoose": "^8.9.2",
     "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.16",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^1.1.1",
     "uuid": "^11.0.3"
