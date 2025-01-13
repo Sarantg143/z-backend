@@ -153,7 +153,7 @@ router.post("/forgot-password", async (req, res) => {
     await user.save();
 
     // Create the password reset URL
-    const resetUrl = `${process.env.CLIENT_URL}/api/users/reset-password/${resetToken}`;
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
 
     // Send email using Nodemailer
     const transporter = nodemailer.createTransport({
