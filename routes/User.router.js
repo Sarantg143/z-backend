@@ -8,8 +8,11 @@ const { deleteTempFile } = require("../utils/tempUtils");
 const multer = require("multer");
 const path = require("path");
 const { auth } = require("../firebaseConfig");
+const { db, bucket, admin } = require('../firebaseConfig');
 const { updateLessonProgress} = require('../utils/progress');
-
+const { v4: uuidv4 } = require("uuid");
+const nodemailer = require("nodemailer");
+const bodyParser = require('body-parser');
 const router = express.Router();
 const upload = multer({ dest: path.join(__dirname, "../temp") });
 
@@ -126,17 +129,22 @@ router.post("/auth/google", async (req, res) => {
 
 // POST route to handle forgot password
 router.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
-
   try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    console.log("User found:", user);
+
     // Generate a reset token
-    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetToken = uuidv4().replace(/-/g, "");
     const resetTokenExpiry = Date.now() + 3600000; // 1 hour expiry
 
     // Save the token and expiry to the user record
@@ -145,19 +153,19 @@ router.post("/forgot-password", async (req, res) => {
     await user.save();
 
     // Create the password reset URL
-    const resetUrl = `${process.env.CLIENT_URL}/api/users/reset-password/${resetToken}`;
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
 
     // Send email using Nodemailer
     const transporter = nodemailer.createTransport({
-      service: "Gmail", // You can use any email service
+      service: "Gmail",
       auth: {
-        user: process.env.EMAIL_USER, // Your email
-        pass: process.env.EMAIL_PASS, // Your email password
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 
     const mailOptions = {
-      from: "Zion Seminary" `<${process.env.EMAIL_USER}>`,
+      from: `"Zion Seminary" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "Password Reset Request",
       html: `
@@ -169,11 +177,9 @@ router.post("/forgot-password", async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
-
     res.status(200).json({ message: "Password reset link sent to your email." });
   } catch (error) {
-    console.error("Error in forgot password:", error);
-    res.status(500).json({ message: "An error occurred. Please try again later." });
+    res.status(500).json({ message: "An unexpected error occurred. Please try again later." });
   }
 });
 
