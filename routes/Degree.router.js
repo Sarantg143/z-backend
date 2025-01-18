@@ -51,6 +51,7 @@ router.post(
       const uploadedCourseThumbnails = req.files["courseThumbnails"] || [];
       const courseThumbnailsUrls = await Promise.all(
         uploadedCourseThumbnails.map(async (file) => {
+          if (!file) return { url: null, type: null }; 
           const filePath = file.path;
           tempFiles.push(filePath);
           const fileName = file.originalname;
@@ -61,6 +62,7 @@ router.post(
       const uploadedLessonFiles = req.files["lessonFiles"] || [];
       const lessonFilesUrls = await Promise.all(
         uploadedLessonFiles.map(async (file) => {
+          if (!file) return { url: null, type: null };  // Safeguard against undefined
           const filePath = file.path;
           tempFiles.push(filePath);
           const fileName = file.originalname;
@@ -68,9 +70,11 @@ router.post(
         })
       );
 
+
       const uploadedSubLessonFiles = req.files["subLessonFiles"] || [];
       const subLessonFilesUrls = await Promise.all(
         uploadedSubLessonFiles.map(async (file) => {
+          if (!file) return { url: null, type: null }; 
           const filePath = file.path;
           tempFiles.push(filePath);
           const fileName = file.originalname;
