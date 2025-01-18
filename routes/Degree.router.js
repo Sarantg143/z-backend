@@ -49,7 +49,8 @@ router.post("/", upload.fields([
     const lessonFilesUrls = await Promise.all(
       uploadedLessonFiles.map(async (file) => {
         tempFiles.push(file.path);
-        return await uploadFile2(file.path, file.originalname);
+        const uploadResult = await uploadFile2(file.path, file.originalname); 
+        return { url: uploadResult.url || null, type: uploadResult.type || null }; // Ensure metadata is wrapped in an object
       })
     );
 
@@ -57,7 +58,8 @@ router.post("/", upload.fields([
     const subLessonFilesUrls = await Promise.all(
       uploadedSubLessonFiles.map(async (file) => {
         tempFiles.push(file.path);
-        return await uploadFile2(file.path, file.originalname);
+        const uploadResult = await uploadFile2(file.path, file.originalname); 
+        return { url: uploadResult.url || null, type: uploadResult.type || null }; // Ensure metadata is wrapped in an object
       })
     );
 
@@ -93,7 +95,7 @@ router.post("/", upload.fields([
                 const subLessonFileMetadata = subLessonFilesUrls[subLessonIndex++] || {};
                 return {
                   subLessonId: new mongoose.Types.ObjectId(),
-                  title: subLesson.title || null,
+                  title: subLesson.title|| null,
                   file: subLessonFileMetadata.url || null,
                   fileType: subLessonFileMetadata.type || null,
                   test: subLesson.test || [],
@@ -124,6 +126,7 @@ router.post("/", upload.fields([
     }));
   }
 });
+
 
 
 
