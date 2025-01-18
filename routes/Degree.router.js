@@ -36,7 +36,7 @@ router.post("/", upload.fields([
 
     if (uploadedDegreeThumbnail) {
       const filePath = uploadedDegreeThumbnail.path;
-      tempFiles.push(filePath); 
+      tempFiles.push(filePath);
       const fileName = uploadedDegreeThumbnail.originalname;
       degreeThumbnailUrl = await uploadFile(filePath, fileName);
     }
@@ -48,7 +48,7 @@ router.post("/", upload.fields([
     const courseThumbnailsUrls = await Promise.all(
       uploadedCourseThumbnails.map(async (file) => {
         const filePath = file.path;
-        tempFiles.push(filePath); 
+        tempFiles.push(filePath);
         const fileName = file.originalname;
         return await uploadFile(filePath, fileName);
       })
@@ -57,18 +57,18 @@ router.post("/", upload.fields([
     const lessonFilesUrls = await Promise.all(
       uploadedLessonFiles.map(async (file) => {
         const filePath = file.path;
-        tempFiles.push(filePath); 
+        tempFiles.push(filePath);
         const fileName = file.originalname;
-        return await uploadFile2(filePath, fileName);
+        return await uploadFile2(filePath, fileName) || { url: null, type: null }; // Default to null metadata
       })
     );
 
     const subLessonFilesUrls = await Promise.all(
       uploadedSubLessonFiles.map(async (file) => {
         const filePath = file.path;
-        tempFiles.push(filePath); 
+        tempFiles.push(filePath);
         const fileName = file.originalname;
-        return await uploadFile2(filePath, fileName);
+        return await uploadFile2(filePath, fileName) || { url: null, type: null }; // Default to null metadata
       })
     );
 
@@ -118,6 +118,7 @@ router.post("/", upload.fields([
         })),
       })),
     });
+
 
 
     await newDegree.save();
