@@ -14,152 +14,117 @@ const upload = multer({dest: path.join(__dirname, "../temp"),
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
 });
 
-router.post(
-  "/",
-  upload.fields([
-    { name: "degreeThumbnail", maxCount: 1 },
-    { name: "courseThumbnails" },
-    { name: "lessonFiles" },
-    { name: "subLessonFiles" },
-  ]),
-  async (req, res) => {
-    const tempFiles = [];
-    try {
-      const { title, description, price, courses } = req.body;
+router.post("/", upload.fields([
+  { name: "degreeThumbnail", maxCount: 1 }, 
+  { name: "courseThumbnails" }, 
+  { name: "lessonFiles" }, 
+  { name: "subLessonFiles" }
+]), async (req, res) => {
+  const tempFiles = [];
 
-      if (!title || !description || !price || !courses) {
-        return res.status(400).json({ message: "Missing required fields" });
-      }
+  try {
+    const { title, description, price, courses } = req.body;
 
-      let parsedCourses;
-      try {
-        parsedCourses = JSON.parse(courses);
-      } catch (error) {
-        return res.status(400).json({ message: "Invalid courses format" });
-      }
-
-      const uploadedDegreeThumbnail = req.files["degreeThumbnail"]?.[0];
-      let degreeThumbnailUrl = null;
-
-      if (uploadedDegreeThumbnail) {
-        const filePath = uploadedDegreeThumbnail.path;
-        tempFiles.push(filePath);
-        const fileName = uploadedDegreeThumbnail.originalname;
-        degreeThumbnailUrl = await uploadFile(filePath, fileName);
-      }
-
-      const uploadedCourseThumbnails = req.files["courseThumbnails"] || [];
-      const courseThumbnailsUrls = await Promise.all(
-        uploadedCourseThumbnails.map(async (file) => {
-          if (!file) return { url: null, type: null }; 
-          const filePath = file.path;
-          tempFiles.push(filePath);
-          const fileName = file.originalname;
-          return (await uploadFile(filePath, fileName)) || { url: null, type: null };
-        })
-      );
-
-      const uploadedLessonFiles = req.files["lessonFiles"] || [];
-      const lessonFilesUrls = await Promise.all(
-        uploadedLessonFiles.map(async (file) => {
-          if (!file) return { url: null, type: null };  // Safeguard against undefined
-          const filePath = file.path;
-          tempFiles.push(filePath);
-          const fileName = file.originalname;
-          return (await uploadFile2(filePath, fileName)) || { url: null, type: null };
-        })
-      );
-
-
-      const uploadedSubLessonFiles = req.files["subLessonFiles"] || [];
-      const subLessonFilesUrls = await Promise.all(
-        uploadedSubLessonFiles.map(async (file) => {
-          if (!file) return { url: null, type: null }; 
-          const filePath = file.path;
-          tempFiles.push(filePath);
-          const fileName = file.originalname;
-          return (await uploadFile2(filePath, fileName)) || { url: null, type: null };
-        })
-      );
-
-      let lessonIndex = 0;
-      let subLessonIndex = 0;
-
-      const newDegree = new Degree({
-        degreeId: new mongoose.Types.ObjectId(),
-        title,
-        description,
-        price,
-        thumbnail: degreeThumbnailUrl,
-        courses: parsedCourses.map((course, courseIndex) => ({
-          courseId: new mongoose.Types.ObjectId(),
-          title: course.title,
-          description: course.description,
-          thumbnail: courseThumbnailsUrls[courseIndex]?.url || null,
-          test: course.test || [],
-          overviewPoints: course.overviewPoints || [],
-          chapters: course.chapters.map((chapter) => ({
-            chapterId: new mongoose.Types.ObjectId(),
-            title: chapter.title,
-            description: chapter.description || null,
-            test: chapter.test || [],
-            lessons: chapter.lessons.map((lesson) => {
-              const fileMetadata = lessonFilesUrls[lessonIndex] || { url: null, type: null };
-              lessonIndex++;
-              return {
-                lessonId: new mongoose.Types.ObjectId(),
-                title: lesson.title || null,
-                file: fileMetadata.url,
-                fileType: fileMetadata.type,
-                test: lesson.test || null,
-                subLessons: Array.isArray(lesson.subLessons)
-                  ? lesson.subLessons.map((subLesson) => {
-                      const subLessonFileMetadata = subLessonFilesUrls[subLessonIndex] || { url: null, type: null };
-                      subLessonIndex++;
-                      return {
-                        subLessonId: new mongoose.Types.ObjectId(),
-                        title: subLesson.title || null,
-                        file: subLessonFileMetadata.url,
-                        fileType: subLessonFileMetadata.type,
-                        test: subLesson.test || null,
-                      };
-                    })
-                  : [],
-              };
-            }),
-          })),
-        })),
-      });
-
-      await newDegree.save();
-
-      res.status(201).json({
-        message: "Degree created successfully",
-        degree: newDegree,
-      });
-    } catch (error) {
-      console.error("Error adding degree:", error);
-      res.status(500).json({
-        message: "Failed to create degree",
-        error: error.message,
-      });
-    } finally {
-      await Promise.all(
-        tempFiles.map(async (filePath) => {
-          try {
-            const fileExists = await fs.access(filePath).then(() => true).catch(() => false);
-            if (fileExists) {
-              await fs.unlink(filePath);
-              console.log(`Temporary file deleted: ${filePath}`);
-            }
-          } catch (error) {
-            console.error(`Failed to delete temp file: ${filePath}`, error);
-          }
-        })
-      );
+    if (!title || !description || !price || !courses) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
+
+    const parsedCourses = JSON.parse(courses);
+
+    const uploadedDegreeThumbnail = req.files["degreeThumbnail"]?.[0];
+    const degreeThumbnailUrl = uploadedDegreeThumbnail 
+      ? await uploadFile(uploadedDegreeThumbnail.path, uploadedDegreeThumbnail.originalname) 
+      : null;
+    if (uploadedDegreeThumbnail) tempFiles.push(uploadedDegreeThumbnail.path);
+
+    const uploadedCourseThumbnails = req.files["courseThumbnails"] || [];
+    const courseThumbnailsUrls = await Promise.all(
+      uploadedCourseThumbnails.map(async (file) => {
+        tempFiles.push(file.path);
+        return await uploadFile(file.path, file.originalname);
+      })
+    );
+
+    const uploadedLessonFiles = req.files["lessonFiles"] || [];
+    const lessonFilesUrls = await Promise.all(
+      uploadedLessonFiles.map(async (file) => {
+        tempFiles.push(file.path);
+        return await uploadFile2(file.path, file.originalname);
+      })
+    );
+
+    const uploadedSubLessonFiles = req.files["subLessonFiles"] || [];
+    const subLessonFilesUrls = await Promise.all(
+      uploadedSubLessonFiles.map(async (file) => {
+        tempFiles.push(file.path);
+        return await uploadFile2(file.path, file.originalname);
+      })
+    );
+
+    let lessonIndex = 0;
+    let subLessonIndex = 0;
+    const newDegree = new Degree({
+      degreeId: new mongoose.Types.ObjectId(),
+      title,
+      description,
+      price,
+      thumbnail: degreeThumbnailUrl,
+      courses: parsedCourses.map((course, courseIndex) => ({
+        courseId: new mongoose.Types.ObjectId(),
+        title: course.title,
+        description: course.description,
+        thumbnail: courseThumbnailsUrls[courseIndex] || null,
+        test: course.test || [],
+        overviewPoints: course.overviewPoints || [],
+        chapters: course.chapters.map((chapter) => ({
+          chapterId: new mongoose.Types.ObjectId(),
+          title: chapter.title,
+          description: chapter.description || null,
+          test: chapter.test || [],
+          lessons: chapter.lessons.map((lesson) => {
+            const fileMetadata = lessonFilesUrls[lessonIndex++] || {};
+            return {
+              lessonId: new mongoose.Types.ObjectId(),
+              title: lesson.title|| null,
+              file: fileMetadata.url || null,
+              fileType: fileMetadata.type || null,
+              test: lesson.test || [],
+              subLessons: Array.isArray(lesson.subLessons) ? lesson.subLessons.map((subLesson) => {
+                const subLessonFileMetadata = subLessonFilesUrls[subLessonIndex++] || {};
+                return {
+                  subLessonId: new mongoose.Types.ObjectId(),
+                  title: subLesson.title || null,
+                  file: subLessonFileMetadata.url || null,
+                  fileType: subLessonFileMetadata.type || null,
+                  test: subLesson.test || [],
+                };
+              }) : []
+            };
+          }),
+        })),
+      })),
+    });
+
+    await newDegree.save();
+    res.status(201).json({ message: "Degree created successfully", degree: newDegree });
+  } catch (error) {
+    console.error("Error adding degree:", error);
+    res.status(500).json({ message: "Failed to create degree", error: error.message });
+  } finally {
+    await Promise.all(tempFiles.map(async (filePath) => {
+      try {
+        const fileExists = await fs.promises.access(filePath).then(() => true).catch(() => false);
+        if (fileExists) {
+          await fs.promises.unlink(filePath);
+          console.log(`Temporary file deleted: ${filePath}`);
+        }
+      } catch (error) {
+        console.error(`Failed to delete temp file: ${filePath}`, error);
+      }
+    }));
   }
-);
+});
+
 
 
 router.put("/:degreeId", upload.fields([
