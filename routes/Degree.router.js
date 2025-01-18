@@ -14,15 +14,16 @@ const upload = multer({dest: path.join(__dirname, "../temp"),
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
 });
 
-router.post("/",upload.fields([
-    { name: "degreeThumbnail", maxCount: 1 }, 
-    { name: "courseThumbnails" }, 
-    { name: "lessonFiles" }, 
+router.post(
+  "/",
+  upload.fields([
+    { name: "degreeThumbnail", maxCount: 1 },
+    { name: "courseThumbnails" },
+    { name: "lessonFiles" },
     { name: "subLessonFiles" },
   ]),
   async (req, res) => {
-    const tempFiles = []; 
-
+    const tempFiles = [];
     try {
       const { title, description, price, courses } = req.body;
 
@@ -42,7 +43,7 @@ router.post("/",upload.fields([
 
       if (uploadedDegreeThumbnail) {
         const filePath = uploadedDegreeThumbnail.path;
-        tempFiles.push(filePath); 
+        tempFiles.push(filePath);
         const fileName = uploadedDegreeThumbnail.originalname;
         degreeThumbnailUrl = await uploadFile(filePath, fileName);
       }
@@ -51,9 +52,9 @@ router.post("/",upload.fields([
       const courseThumbnailsUrls = await Promise.all(
         uploadedCourseThumbnails.map(async (file) => {
           const filePath = file.path;
-          tempFiles.push(filePath); 
+          tempFiles.push(filePath);
           const fileName = file.originalname;
-          return await uploadFile(filePath, fileName);
+          return (await uploadFile(filePath, fileName)) || { url: null, type: null };
         })
       );
 
@@ -61,9 +62,9 @@ router.post("/",upload.fields([
       const lessonFilesUrls = await Promise.all(
         uploadedLessonFiles.map(async (file) => {
           const filePath = file.path;
-          tempFiles.push(filePath); 
+          tempFiles.push(filePath);
           const fileName = file.originalname;
-          return await uploadFile2(filePath, fileName); 
+          return (await uploadFile2(filePath, fileName)) || { url: null, type: null };
         })
       );
 
@@ -71,15 +72,15 @@ router.post("/",upload.fields([
       const subLessonFilesUrls = await Promise.all(
         uploadedSubLessonFiles.map(async (file) => {
           const filePath = file.path;
-          tempFiles.push(filePath); 
+          tempFiles.push(filePath);
           const fileName = file.originalname;
-          return await uploadFile2(filePath, fileName);
+          return (await uploadFile2(filePath, fileName)) || { url: null, type: null };
         })
       );
 
       let lessonIndex = 0;
       let subLessonIndex = 0;
-      
+
       const newDegree = new Degree({
         degreeId: new mongoose.Types.ObjectId(),
         title,
@@ -90,43 +91,42 @@ router.post("/",upload.fields([
           courseId: new mongoose.Types.ObjectId(),
           title: course.title,
           description: course.description,
-          thumbnail: courseThumbnailsUrls[courseIndex] || null,
+          thumbnail: courseThumbnailsUrls[courseIndex]?.url || null,
           test: course.test || [],
           overviewPoints: course.overviewPoints || [],
           chapters: course.chapters.map((chapter) => ({
             chapterId: new mongoose.Types.ObjectId(),
             title: chapter.title,
-            description: chapter.description|| null,
+            description: chapter.description || null,
             test: chapter.test || [],
             lessons: chapter.lessons.map((lesson) => {
-              const fileMetadata = lessonFilesUrls[lessonIndex] || {};
+              const fileMetadata = lessonFilesUrls[lessonIndex] || { url: null, type: null };
               lessonIndex++;
               return {
                 lessonId: new mongoose.Types.ObjectId(),
                 title: lesson.title || null,
-                file: fileMetadata.url || null,
-                fileType: fileMetadata.type || null,
-               
+                file: fileMetadata.url,
+                fileType: fileMetadata.type,
                 test: lesson.test || null,
-                subLessons: Array.isArray(lesson.subLessons) ? lesson.subLessons.map((subLesson) => {
-                  const subLessonFileMetadata = subLessonFilesUrls[subLessonIndex] || {};
-                  subLessonIndex++;
-                  return {
-                    subLessonId: new mongoose.Types.ObjectId(),
-                    title: subLesson.title || null,
-                    file: subLessonFileMetadata.url || null,
-                    fileType: subLessonFileMetadata.type || null,
-  
-                    test: subLesson.test || null,
-                  };
-                }) : []
+                subLessons: Array.isArray(lesson.subLessons)
+                  ? lesson.subLessons.map((subLesson) => {
+                      const subLessonFileMetadata = subLessonFilesUrls[subLessonIndex] || { url: null, type: null };
+                      subLessonIndex++;
+                      return {
+                        subLessonId: new mongoose.Types.ObjectId(),
+                        title: subLesson.title || null,
+                        file: subLessonFileMetadata.url,
+                        fileType: subLessonFileMetadata.type,
+                        test: subLesson.test || null,
+                      };
+                    })
+                  : [],
               };
             }),
           })),
         })),
       });
 
-      // Save Degree to Database
       await newDegree.save();
 
       res.status(201).json({
@@ -140,14 +140,10 @@ router.post("/",upload.fields([
         error: error.message,
       });
     } finally {
-    
       await Promise.all(
         tempFiles.map(async (filePath) => {
           try {
-            const fileExists = await fs
-              .access(filePath)
-              .then(() => true)
-              .catch(() => false);
+            const fileExists = await fs.access(filePath).then(() => true).catch(() => false);
             if (fileExists) {
               await fs.unlink(filePath);
               console.log(`Temporary file deleted: ${filePath}`);
@@ -160,6 +156,7 @@ router.post("/",upload.fields([
     }
   }
 );
+
 
 router.put("/:degreeId", upload.fields([
   { name: "degreeThumbnail", maxCount: 1 },
