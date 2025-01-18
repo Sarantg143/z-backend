@@ -32,39 +32,49 @@ router.post("/", upload.fields([
     const parsedCourses = JSON.parse(courses);
 
     const uploadedDegreeThumbnail = req.files["degreeThumbnail"]?.[0];
-    const degreeThumbnailUrl = uploadedDegreeThumbnail 
-      ? await uploadFile(uploadedDegreeThumbnail.path, uploadedDegreeThumbnail.originalname) 
-      : null;
-    if (uploadedDegreeThumbnail) tempFiles.push(uploadedDegreeThumbnail.path);
+    let degreeThumbnailUrl = null;
+
+    if (uploadedDegreeThumbnail) {
+      const filePath = uploadedDegreeThumbnail.path;
+      tempFiles.push(filePath); 
+      const fileName = uploadedDegreeThumbnail.originalname;
+      degreeThumbnailUrl = await uploadFile(filePath, fileName);
+    }
 
     const uploadedCourseThumbnails = req.files["courseThumbnails"] || [];
+    const uploadedLessonFiles = req.files["lessonFiles"] || [];
+    const uploadedSubLessonFiles = req.files["subLessonFiles"] || [];
+
     const courseThumbnailsUrls = await Promise.all(
       uploadedCourseThumbnails.map(async (file) => {
-        tempFiles.push(file.path);
-        return await uploadFile(file.path, file.originalname);
+        const filePath = file.path;
+        tempFiles.push(filePath); 
+        const fileName = file.originalname;
+        return await uploadFile(filePath, fileName);
       })
     );
 
-    const uploadedLessonFiles = req.files["lessonFiles"] || [];
     const lessonFilesUrls = await Promise.all(
       uploadedLessonFiles.map(async (file) => {
-        tempFiles.push(file.path);
-        const uploadResult = await uploadFile2(file.path, file.originalname); 
-        return { url: uploadResult.url || null, type: uploadResult.type || null }; // Ensure metadata is wrapped in an object
+        const filePath = file.path;
+        tempFiles.push(filePath); 
+        const fileName = file.originalname;
+        return await uploadFile2(filePath, fileName);
       })
     );
 
-    const uploadedSubLessonFiles = req.files["subLessonFiles"] || [];
     const subLessonFilesUrls = await Promise.all(
       uploadedSubLessonFiles.map(async (file) => {
-        tempFiles.push(file.path);
-        const uploadResult = await uploadFile2(file.path, file.originalname); 
-        return { url: uploadResult.url || null, type: uploadResult.type || null }; // Ensure metadata is wrapped in an object
+        const filePath = file.path;
+        tempFiles.push(filePath); 
+        const fileName = file.originalname;
+        return await uploadFile2(filePath, fileName);
       })
     );
 
     let lessonIndex = 0;
     let subLessonIndex = 0;
+
     const newDegree = new Degree({
       degreeId: new mongoose.Types.ObjectId(),
       title,
@@ -84,28 +94,31 @@ router.post("/", upload.fields([
           description: chapter.description || null,
           test: chapter.test || [],
           lessons: chapter.lessons.map((lesson) => {
-            const fileMetadata = lessonFilesUrls[lessonIndex++] || {};
+            const lessonFileMetadata = lessonFilesUrls[lessonIndex] || { url: null, type: null };
+            lessonIndex++;
             return {
               lessonId: new mongoose.Types.ObjectId(),
-              title: lesson.title|| null,
-              file: fileMetadata.url || null,
-              fileType: fileMetadata.type || null,
+              title: lesson.title || null,
+              file: lessonFileMetadata.url,
+              fileType: lessonFileMetadata.type,
               test: lesson.test || [],
-              subLessons: Array.isArray(lesson.subLessons) ? lesson.subLessons.map((subLesson) => {
-                const subLessonFileMetadata = subLessonFilesUrls[subLessonIndex++] || {};
+              subLessons: (lesson.subLessons || []).map((subLesson) => {
+                const subLessonFileMetadata = subLessonFilesUrls[subLessonIndex] || { url: null, type: null };
+                subLessonIndex++;
                 return {
                   subLessonId: new mongoose.Types.ObjectId(),
-                  title: subLesson.title|| null,
-                  file: subLessonFileMetadata.url || null,
-                  fileType: subLessonFileMetadata.type || null,
+                  title: subLesson.title || null,
+                  file: subLessonFileMetadata.url,
+                  fileType: subLessonFileMetadata.type,
                   test: subLesson.test || [],
                 };
-              }) : []
+              }),
             };
           }),
         })),
       })),
     });
+
 
     await newDegree.save();
     res.status(201).json({ message: "Degree created successfully", degree: newDegree });
