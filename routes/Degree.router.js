@@ -201,17 +201,25 @@ router.put("/:degreeId", upload.fields([
 
     // Handle sublesson files (if provided)
     const uploadedSubLessonFiles = req.files["subLessonFiles"] || [];
+    const parsedSublessonIndexes = JSON.parse(sublessonIndexes || '[]');  // Ensure it's parsed to an array
     const subLessonFilesUrls = [];
 
-    if (uploadedSubLessonFiles.length > 0 && sublessonIndexes) {
-      uploadedSubLessonFiles.forEach((file, index) => {
-        const sublessonIndex = sublessonIndexes[index]; // Get the specific index from sublessonIndexes array
+    if (uploadedSubLessonFiles.length > 0 && parsedSublessonIndexes.length > 0) {
+      const uploadedSubLessonPromises = uploadedSubLessonFiles.map(async (file, fileIndex) => {
+        const subLessonIndex = parsedSublessonIndexes[fileIndex]; // Map fileIndex to subLessonIndex
         const filePath = file.path;
         tempFiles.push(filePath);
         const fileName = file.originalname;
+        const fileUrl = await uploadFile2(filePath, fileName);  // Upload and get URL
+        return { subLessonIndex, fileUrl };
+      });
 
-        // Update the sublesson file for the given index
-        subLessonFilesUrls[sublessonIndex] = uploadFile2(filePath, fileName);
+      // Wait for all file uploads to complete
+      const uploadedSubLessonResults = await Promise.all(uploadedSubLessonPromises);
+
+      // Store results in subLessonFilesUrls array
+      uploadedSubLessonResults.forEach(({ subLessonIndex, fileUrl }) => {
+        subLessonFilesUrls[subLessonIndex] = fileUrl;
       });
     }
 
@@ -241,11 +249,10 @@ router.put("/:degreeId", upload.fields([
           test: lesson.test || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].test,
           subLessons: (lesson.subLessons || []).map((subLesson, subLessonIndex) => ({
             ...degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].subLessons[subLessonIndex],
-            title: subLesson.title || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].subLessons[subLessonIndex].title,
             file: subLessonFilesUrls[subLessonIndex] || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].subLessons[subLessonIndex].file,
             fileType: subLesson.fileType || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].subLessons[subLessonIndex].fileType,
             test: subLesson.test || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].subLessons[subLessonIndex].test,
-          }))
+          }))          
         }))
       }))
     }));
