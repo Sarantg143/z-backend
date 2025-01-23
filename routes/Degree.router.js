@@ -201,24 +201,32 @@ router.put("/:degreeId", upload.fields([
 
     // Handle sublesson files (if provided)
     const uploadedSubLessonFiles = req.files["subLessonFiles"] || [];
-    const subLessonFilesUrls = [];
+    const subLessonFilesUrls = []; // Array to store updated URLs
     
-    if (uploadedSubLessonFiles.length > 0 && sublessonIndexes) {
+    if (uploadedSubLessonFiles.length > 0 && parsedIndexes.length > 0) {
+      // Loop through the files and their corresponding indexes
       await Promise.all(
         uploadedSubLessonFiles.map(async (file, index) => {
-          const sublessonIndex = sublessonIndexes[index]; // Get the specific index from sublessonIndexes array
-          const filePath = file.path;
-          tempFiles.push(filePath);
-          const fileName = file.originalname;
+          const sublessonIndex = parsedIndexes[index]; // Get the specific index
+          if (sublessonIndex !== undefined) {
+            const filePath = file.path;
+            tempFiles.push(filePath); // Store temporary path for cleanup
+            const fileName = file.originalname;
     
-          // Upload file and extract only the URL
-          const uploadResult = await uploadFile2(filePath, fileName);
-          if (uploadResult && uploadResult.url) {
-            subLessonFilesUrls[sublessonIndex] = uploadResult.url;
+            // Upload the file
+            const uploadResult = await uploadFile2(filePath, fileName);
+            console.log(`File uploaded for sublesson ${sublessonIndex}:`, uploadResult);
+    
+            if (uploadResult && uploadResult.url) {
+              subLessonFilesUrls[sublessonIndex] = uploadResult.url; // Assign uploaded URL to the specific sublesson
+            }
           }
         })
       );
     }
+    
+    console.log("Mapped SubLesson Files URLs:", subLessonFilesUrls);
+    
 
     // Update the degree details with the updated fields
     degree.title = title || degree.title;  // Retain old title if not provided
@@ -247,7 +255,7 @@ router.put("/:degreeId", upload.fields([
           subLessons: (lesson.subLessons || []).map((subLesson, subLessonIndex) => ({
             ...degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].subLessons[subLessonIndex],
             title: subLesson.title || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].subLessons[subLessonIndex].title,
-            file: subLessonFilesUrls[subLessonIndex] || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].subLessons[subLessonIndex].file, // Only the URL
+            file: subLessonFilesUrls[subLessonIndex] || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].subLessons[subLessonIndex].file, // Use new file URL or retain the old one
             fileType: subLesson.fileType || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].subLessons[subLessonIndex].fileType,
             test: subLesson.test || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].subLessons[subLessonIndex].test,
           }))
@@ -276,6 +284,7 @@ router.put("/:degreeId", upload.fields([
     }));
   }
 });
+
 
 
 
