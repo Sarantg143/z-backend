@@ -160,6 +160,15 @@ router.put("/:degreeId", upload.fields([
     }
 
     const parsedCourses = JSON.parse(courses);
+
+    let parsedIndexes = [];
+    try {
+      parsedIndexes = JSON.parse(req.body.sublessonIndexes || "[]");
+      console.log("Parsed Sublesson Indexes:", parsedIndexes);
+    } catch (error) {
+      console.error("Failed to parse sublessonIndexes:", error);
+      return res.status(400).json({ message: "Invalid sublessonIndexes format" });
+    }
     
     // Finding the existing degree by degreeId
     const degree = await Degree.findById(degreeId);
