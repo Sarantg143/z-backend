@@ -14,7 +14,52 @@ const upload = multer({dest: path.join(__dirname, "../temp"),
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
 });
 
-router.post("/", upload.fields([
+
+// Add a New Degree
+router.post("/", async (req, res) => {
+  try {
+    const { title, description, thumbnail, price, courses } = req.body;
+
+    const newDegree = new Degree({
+      title,
+      description,
+      thumbnail,
+      price,
+      courses, 
+    });
+
+    const savedDegree = await newDegree.save();
+    res.status(201).json({ message: "Degree added successfully", degree: savedDegree });
+  } catch (error) {
+    console.error("Error adding degree:", error);
+    res.status(500).json({ message: "Failed to add degree", error: error.message });
+  }
+}); 
+
+// Edit 
+router.put("/:id", async (req, res) => {
+  try {
+    const degreeId = req.params.id;
+    const updates = req.body;
+
+    const updatedDegree = await Degree.findByIdAndUpdate(degreeId, updates, {
+      new: true, 
+      runValidators: true, 
+    });
+
+    if (!updatedDegree) {
+      return res.status(404).json({ message: "Degree not found" });
+    }
+
+    res.status(200).json({ message: "Degree updated successfully", degree: updatedDegree });
+  } catch (error) {
+    console.error("Error updating degree:", error);
+    res.status(500).json({ message: "Failed to update degree", error: error.message });
+  }
+});
+
+
+router.post("/add", upload.fields([
   { name: "degreeThumbnail", maxCount: 1 }, 
   { name: "courseThumbnails" }, 
   { name: "lessonFiles" }, 
@@ -59,7 +104,7 @@ router.post("/", upload.fields([
         const filePath = file.path;
         tempFiles.push(filePath);
         const fileName = file.originalname;
-        return await uploadFile2(filePath, fileName) || { url: null, type: null }; // Default to null metadata
+        return await uploadFile2(filePath, fileName) || { url: null, type: null }; 
       })
     );
 
@@ -68,7 +113,7 @@ router.post("/", upload.fields([
         const filePath = file.path;
         tempFiles.push(filePath);
         const fileName = file.originalname;
-        return await uploadFile2(filePath, fileName) || { url: null, type: null }; // Default to null metadata
+        return await uploadFile2(filePath, fileName) || { url: null, type: null }; 
       })
     );
 
@@ -143,7 +188,7 @@ router.post("/", upload.fields([
 
 
 
-router.put("/:degreeId", upload.fields([
+router.put("/edit/:degreeId", upload.fields([
   { name: "degreeThumbnail", maxCount: 1 },
   { name: "courseThumbnails" },
   { name: "lessonFiles" },
@@ -169,16 +214,13 @@ router.put("/:degreeId", upload.fields([
       console.error("Failed to parse sublessonIndexes:", error);
       return res.status(400).json({ message: "Invalid sublessonIndexes format" });
     }
-    
-    // Finding the existing degree by degreeId
+  
     const degree = await Degree.findById(degreeId);
     if (!degree) {
       return res.status(404).json({ message: "Degree not found" });
     }
-
-    // Handle degree thumbnail (if provided)
     const uploadedDegreeThumbnail = req.files["degreeThumbnail"]?.[0];
-    let degreeThumbnailUrl = degree.thumbnail; // Retain old thumbnail unless updated
+    let degreeThumbnailUrl = degree.thumbnail; 
     if (uploadedDegreeThumbnail) {
       const filePath = uploadedDegreeThumbnail.path;
       tempFiles.push(filePath);
@@ -186,18 +228,16 @@ router.put("/:degreeId", upload.fields([
       degreeThumbnailUrl = await uploadFile(filePath, fileName);
     }
 
-    // Handle course thumbnails (if provided)
     const uploadedCourseThumbnails = req.files["courseThumbnails"] || [];
     const courseThumbnailsUrls = await Promise.all(
       uploadedCourseThumbnails.map(async (file, index) => {
         const filePath = file.path;
         tempFiles.push(filePath);
         const fileName = file.originalname;
-        return await uploadFile(filePath, fileName) || degree.courses[index].thumbnail;  // Retain old thumbnail if not provided
+        return await uploadFile(filePath, fileName) || degree.courses[index].thumbnail;  
       })
     );
 
-    // Handle lesson files (if provided)
     const uploadedLessonFiles = req.files["lessonFiles"] || [];
     const lessonFilesUrls = await Promise.all(
       uploadedLessonFiles.map(async (file, lessonIndex) => {
@@ -208,26 +248,24 @@ router.put("/:degreeId", upload.fields([
       })
     );
 
-    // Handle sublesson files (if provided)
     const uploadedSubLessonFiles = req.files["subLessonFiles"] || [];
-    const subLessonFilesUrls = []; // Array to store updated URLs
+    const subLessonFilesUrls = []; 
     
     if (uploadedSubLessonFiles.length > 0 && parsedIndexes.length > 0) {
-      // Loop through the files and their corresponding indexes
+     
       await Promise.all(
         uploadedSubLessonFiles.map(async (file, index) => {
-          const sublessonIndex = parsedIndexes[index]; // Get the specific index
+          const sublessonIndex = parsedIndexes[index]; 
           if (sublessonIndex !== undefined) {
             const filePath = file.path;
-            tempFiles.push(filePath); // Store temporary path for cleanup
+            tempFiles.push(filePath); 
             const fileName = file.originalname;
-    
-            // Upload the file
+  
             const uploadResult = await uploadFile2(filePath, fileName);
             console.log(`File uploaded for sublesson ${sublessonIndex}:`, uploadResult);
     
             if (uploadResult && uploadResult.url) {
-              subLessonFilesUrls[sublessonIndex] = uploadResult.url; // Assign uploaded URL to the specific sublesson
+              subLessonFilesUrls[sublessonIndex] = uploadResult.url; 
             }
           }
         })
@@ -235,30 +273,30 @@ router.put("/:degreeId", upload.fields([
     }
     
     console.log("Mapped SubLesson Files URLs:", subLessonFilesUrls);
+    console.log("Parsed Indexes:", parsedIndexes);
+    console.log("Uploaded Files:", uploadedSubLessonFiles.map(file => file.originalname));
     
-
-    // Update the degree details with the updated fields
-    degree.title = title || degree.title;  // Retain old title if not provided
-    degree.description = description || degree.description;  // Retain old description if not provided
-    degree.price = price || degree.price;  // Retain old price if not provided
+    degree.title = title || degree.title; 
+    degree.description = description || degree.description; 
+    degree.price = price || degree.price;  
     degree.thumbnail = degreeThumbnailUrl;
 
     degree.courses = parsedCourses.map((course, courseIndex) => ({
       ...degree.courses[courseIndex],
-      title: course.title || degree.courses[courseIndex].title,  // Retain old title if not provided
-      description: course.description || degree.courses[courseIndex].description,  // Retain old description if not provided
+      title: course.title || degree.courses[courseIndex].title,  
+      description: course.description || degree.courses[courseIndex].description,  
       thumbnail: courseThumbnailsUrls[courseIndex] || degree.courses[courseIndex].thumbnail,
       test: course.test || degree.courses[courseIndex].test,
       overviewPoints: course.overviewPoints || degree.courses[courseIndex].overviewPoints,
       chapters: (course.chapters || []).map((chapter, chapterIndex) => ({
         ...degree.courses[courseIndex].chapters[chapterIndex],
-        title: chapter.title || degree.courses[courseIndex].chapters[chapterIndex].title,  // Retain old chapter title if not provided
+        title: chapter.title || degree.courses[courseIndex].chapters[chapterIndex].title,  
         description: chapter.description || degree.courses[courseIndex].chapters[chapterIndex].description,
         test: chapter.test || degree.courses[courseIndex].chapters[chapterIndex].test,
         lessons: (chapter.lessons || []).map((lesson, lessonIndex) => ({
           ...degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex],
-          title: lesson.title || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].title,  // Retain old lesson title if not provided
-          file: lessonFilesUrls[lessonIndex] || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].file,  // Retain old file if not provided
+          title: lesson.title || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].title,  
+          file: lessonFilesUrls[lessonIndex] || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].file, 
           fileType: lesson.fileType || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].fileType,
           test: lesson.test || degree.courses[courseIndex].chapters[chapterIndex].lessons[lessonIndex].test,
           subLessons: (lesson.subLessons || []).map((subLesson, subLessonIndex) => ({

@@ -13,6 +13,9 @@ const completeRoutes = require("./routes/Completed.router");
 const eventRouter = require('./routes/Event.router');
 const adminEventRouter = require('./routes/AdminEvent.router');
 const answerRouter = require('./routes/Answer.router');
+const upload = require("./routes/Upload.router");
+const NotificationRouter = require('./routes/Notification.router');
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,12 +25,6 @@ app.use(cors());
 // app.use(bodyParser.json()); 
 // app.use(bodyParser.urlencoded({ extended: true })); 
  
-
-// // MongoDB connection
-// mongoose
-//   .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-//   .then(() => console.log("Connected to MongoDB"))
-//   .catch((err) => console.error("MongoDB connection error:", err));
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI)
@@ -44,6 +41,8 @@ app.use("/api/complete",completeRoutes);
 app.use('/api/event',eventRouter);
 app.use('/api/admin-event',adminEventRouter);
 app.use('/api/answer',answerRouter);
+app.use("/api/upload",upload);
+app.use('/api/notification',NotificationRouter);
 
 app.get("/", (req, res) => {
   res.send("Welcome to Zions API");
