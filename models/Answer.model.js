@@ -7,7 +7,7 @@ const TestAnswerSchema = new Schema({
   correctAnswer: { type: Schema.Types.Mixed },
   type: { 
     type: String, 
-    enum: ["MCQ", "QuestionAnswer"],
+    enum: ["MCQ", "QuestionAnswer","paragraph"],
     required: true 
   },
   marks: { type: Number },
