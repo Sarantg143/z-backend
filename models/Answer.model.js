@@ -11,10 +11,17 @@ const TestAnswerSchema = new Schema({
     required: true 
   },
   marks: { type: Number },
+  // maxMark: { 
+  //   type: Number,
+  //   required: true,
+  //   default: 1  
+  // },
   maxMark: { 
     type: Number,
     required: true,
-    default: 1  
+    default: function () {
+      return this.type === "MCQ" ? 1 : 10;
+    }
   },
   fileUrl: { type: String },
 });
