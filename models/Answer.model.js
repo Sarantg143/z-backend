@@ -21,6 +21,9 @@ const TestAnswerSchema = new Schema({
     required: true,
     default: function () {
       return this.type === "MCQ" ? 1 : 10;
+    },
+    set: function (value) {
+      return value !== undefined ? value : (this.type === "MCQ" ? 1 : 10);
     }
   },
   fileUrl: { type: String },
@@ -39,24 +42,28 @@ function arrayLimit(val) {
 
 const CourseAnswerSchema = new Schema({
   courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
+  courseTitle: { type: String },
   attempts: { type: [AttemptSchema], validate: [arrayLimit, 'Maximum 5 attempts allowed'] },
   bestMarks: { type: Number, default: 0 }
 });
 
 const ChapterAnswerSchema = new Schema({ 
   chapterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Chapter' },
+  chapterTitle: { type: String },
   attempts: { type: [AttemptSchema], validate: [arrayLimit, 'Maximum 5 attempts allowed'] },
   bestMarks: { type: Number, default: 0 }
 });
 
 const LessonAnswerSchema = new Schema({ 
   lessonId: { type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' },
+  lessonTitle: { type: String },
   attempts: { type: [AttemptSchema], validate: [arrayLimit, 'Maximum 5 attempts allowed'] },
   bestMarks: { type: Number, default: 0 }
 });
 
 const SubLessonAnswerSchema = new Schema({ 
   sublessonId: { type: mongoose.Schema.Types.ObjectId, ref: 'Sublesson' },
+  sublessonTitle: { type: String },
   attempts: { type: [AttemptSchema], validate: [arrayLimit, 'Maximum 5 attempts allowed'] },
   bestMarks: { type: Number, default: 0 }
 });
@@ -64,6 +71,7 @@ const SubLessonAnswerSchema = new Schema({
 const AnswerSchema = new Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
   degreeId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Degree' },
+  degreeTitle: { type: String },
   totalMarks: { type: Number, default: 0 },
   totalPossibleMarks: { type: Number, default: 0 },
   percentage: { type: Number, default: 0 },

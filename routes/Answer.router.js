@@ -43,6 +43,104 @@ router.delete("/:answerId", async (req, res) => {
 
 
 router.post('/submit', upload.array("answerFiles"), async (req, res) => {
+    const tempFiles = [];
+    try {
+        const { userId, degreeId, degreeTitle, courses, chapters, lessons, subLessons } = req.body;
+        if (!userId || !degreeId || !degreeTitle) {
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+  
+        let answerDoc = await Answer.findOne({ userId, degreeId });
+        if (!answerDoc) {
+            answerDoc = new Answer({ 
+                userId, 
+                degreeId, 
+                degreeTitle, 
+                courses: [], 
+                chapters: [], 
+                lessons: [], 
+                subLessons: [] 
+            });
+        } else {
+            // Update degreeTitle if changed
+            answerDoc.degreeTitle = degreeTitle;
+        }
+  
+        const parsedCourses = Array.isArray(courses) ? courses : JSON.parse(courses || "[]");
+        const parsedChapters = Array.isArray(chapters) ? chapters : JSON.parse(chapters || "[]");
+        const parsedLessons = Array.isArray(lessons) ? lessons : JSON.parse(lessons || "[]");
+        const parsedSubLessons = Array.isArray(subLessons) ? subLessons : JSON.parse(subLessons || "[]");
+  
+        const uploadedFiles = req.files || [];
+        const answerFilesUrls = await Promise.all(
+            uploadedFiles.map(async (file) => {
+                tempFiles.push(file.path);
+                return await uploadFile(file.path, file.originalname);
+            })
+        );
+  
+        const processEntities = async (entities, fieldName, idField, titleField) => {
+            for (const entityData of entities) {
+                const entityId = entityData[idField];
+                const entityTitle = entityData[titleField];
+  
+                if (!entityId || !entityTitle) continue;
+  
+                const attemptsData = entityData.attempts || [];
+                let entity = answerDoc[fieldName].find(e => e[idField] && e[idField].equals(entityId));
+  
+                if (!entity) {
+                    entity = {
+                        [idField]: entityId,
+                        [titleField]: entityTitle,
+                        attempts: [],
+                        bestMarks: 0
+                    };
+                    answerDoc[fieldName].push(entity);
+                } else {
+                    // Update title if changed
+                    entity[titleField] = entityTitle;
+                }
+  
+                for (const attemptData of attemptsData) {
+                    const attempt = {
+                        answers: attemptData.answers.map(answer => {
+                            return {
+                                ...answer,
+                                maxMark: answer.type === "MCQ" ? 1 : (answer.maxMark || 10),
+                                fileUrl: ["QuestionAnswer", "paragraph"].includes(answer.type) ? answer.fileUrl || null : null
+                            };
+                        }),
+                        marksObtained: attemptData.answers.reduce((sum, ans) => sum + (ans.marks || 0), 0),
+                        attemptedAt: new Date(),
+                        isBest: false
+                    };
+                    entity.attempts.push(attempt);
+                    entity.bestMarks = Math.max(entity.bestMarks, attempt.marksObtained);
+                }
+            }
+        };
+  
+        await processEntities(parsedCourses, 'courses', 'courseId', 'courseTitle');
+        await processEntities(parsedChapters, 'chapters', 'chapterId', 'chapterTitle');
+        await processEntities(parsedLessons, 'lessons', 'lessonId', 'lessonTitle');
+        await processEntities(parsedSubLessons, 'subLessons', 'sublessonId', 'sublessonTitle');
+  
+        await answerDoc.save();
+        res.status(201).json({ message: 'Answers submitted successfully', answer: answerDoc });
+    } catch (error) {
+        res.status(500).json({ message: 'Submission failed', error: error.message });
+    } finally {
+        await Promise.all(
+            tempFiles.map(async (path) => {
+                try { await fs.unlink(path); } catch (err) { console.error(err); }
+            })
+        );
+    }
+  });
+  
+
+router.post('/submit1', upload.array("answerFiles"), async (req, res) => {
   const tempFiles = [];
   try {
       const { userId, degreeId, courses, chapters, lessons, subLessons } = req.body;
@@ -149,11 +247,15 @@ router.put('/update-marks/:userId/:degreeId', async (req, res) => {
             entities.forEach(entity => {
                 entity.attempts.forEach(attempt => {
                     attempt.answers.forEach(answer => {
-                        if (answer.type === 'QuestionAnswer' && updatedMarks[answer._id]) {
-                            console.log(`Admin updating marks for answer ID: ${answer._id}`);
-                            answer.marks = updatedMarks[answer._id]; 
+                        if (answer.marks === undefined) {  
+                            answer.marks = 0;  
                         }
+                        if (updatedMarks[answer._id] !== undefined) { 
+                            console.log(`Admin updating marks for answer ID: ${answer._id}`);
+                            answer.marks = updatedMarks[answer._id];
+                        } 
                     });
+                    attempt.marksObtained = attempt.answers.reduce((sum, ans) => sum + (ans.marks || 0), 0);
                 });
 
                 entity.bestMarks = entity.attempts.reduce((maxMarks, attempt) => {
