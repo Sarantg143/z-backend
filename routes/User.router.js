@@ -447,6 +447,85 @@ router.put("/:id", upload.fields([
 });
 
 
+router.put("/edit/:id", upload.fields([
+  { name: "signatureFile" },
+  { name: "passportPhotoFile" },
+  { name: "educationCertFile" },
+  { name: "profilePic" },
+  { name: "profileBanner" },
+]), async (req, res) => {
+  try {
+    const userId = req.params.id;
+    console.log("Updating user:", userId);
+
+    const user = await User.findById(userId);
+    if (!user) {
+      console.log("User not found:", userId);
+      return res.status(404).send({ message: "User not found." });
+    }
+
+    console.log("Files received:", req.files);
+
+    // Initialize file paths and URLs
+    const fileFields = ["signatureFile", "passportPhotoFile", "educationCertFile", "profilePic", "profileBanner"];
+    const fileUrls = {};
+
+    for (const field of fileFields) {
+      const filePath = req.files?.[field]?.[0]?.path;
+      if (filePath) {
+        try {
+          console.log(`Uploading ${field}:`, filePath);
+          fileUrls[field] = await uploadFile(filePath, req.files[field][0].originalname);
+          deleteTempFile(filePath);
+          console.log(`${field} uploaded successfully:`, fileUrls[field]);
+        } catch (uploadError) {
+          console.error(`Error uploading ${field}:`, uploadError);
+          return res.status(500).send({ message: `Failed to upload ${field}`, error: uploadError.message });
+        }
+      } else {
+        fileUrls[field] = user[field]; // Keep existing URL if no new file uploaded
+      }
+    }
+
+    // Update ApplyingFor Degree ID
+    let updatedDegreeProgress = user.degreeProgress || [];
+    let applyingForDegreeId = req.body.applyingFor?.degreeId;
+
+    if (applyingForDegreeId) {
+      console.log("New applyingFor degreeId:", applyingForDegreeId);
+
+      // Remove degree progress that doesn't match applyingForDegreeId
+      updatedDegreeProgress = updatedDegreeProgress.filter(progress => progress.degreeId.toString() === applyingForDegreeId);
+      console.log("Filtered degreeProgress after removing mismatches:", updatedDegreeProgress);
+    }
+    console.log("Updated fields:", { ...req.body, ...fileUrls, degreeProgress: updatedDegreeProgress });
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        ...req.body,
+        ...fileUrls,
+        degreeProgress: updatedDegreeProgress,
+      },
+      { new: true }
+    );
+
+    console.log("User updated successfully:", updatedUser);
+    res.status(200).send({
+      message: "User updated successfully.",
+      user: updatedUser,
+    });
+
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).send({
+      message: "Failed to update user.",
+      error: error.message,
+    });
+  }
+});
+
+
 // Delete User Route
 router.delete("/:id", async (req, res) => {
   try {
