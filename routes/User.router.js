@@ -487,17 +487,22 @@ router.put("/edit/:id", upload.fields([
       }
     }
 
-    // Update ApplyingFor Degree ID
+    // Ensure `applyingFor` is a single ObjectId
+    let applyingForDegreeId = req.body.applyingFor;
+    if (applyingForDegreeId && !mongoose.Types.ObjectId.isValid(applyingForDegreeId)) {
+      return res.status(400).send({ message: "Invalid degree ID format." });
+    }
+
+    console.log("New applyingFor degreeId:", applyingForDegreeId);
+
+    // Filter degree progress to keep only objects that match the applyingFor degreeId
     let updatedDegreeProgress = user.degreeProgress || [];
-    let applyingForDegreeId = req.body.applyingFor?.degreeId;
-
     if (applyingForDegreeId) {
-      console.log("New applyingFor degreeId:", applyingForDegreeId);
-
-      // Remove degree progress that doesn't match applyingForDegreeId
       updatedDegreeProgress = updatedDegreeProgress.filter(progress => progress.degreeId.toString() === applyingForDegreeId);
       console.log("Filtered degreeProgress after removing mismatches:", updatedDegreeProgress);
     }
+
+    // Debugging: Logging all updated values before saving
     console.log("Updated fields:", { ...req.body, ...fileUrls, degreeProgress: updatedDegreeProgress });
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -505,6 +510,7 @@ router.put("/edit/:id", upload.fields([
       {
         ...req.body,
         ...fileUrls,
+        applyingFor: applyingForDegreeId,
         degreeProgress: updatedDegreeProgress,
       },
       { new: true }
