@@ -15,6 +15,7 @@ const nodemailer = require("nodemailer");
 const bodyParser = require('body-parser');
 const router = express.Router();
 const upload = multer({ dest: path.join(__dirname, "../temp") });
+const mongoose = require("mongoose");
 
 // Signup Route
 router.post("/signup", async (req, res) => {
@@ -460,13 +461,10 @@ router.put("/edit/:id", upload.fields([
 
     const user = await User.findById(userId);
     if (!user) {
-      console.log("User not found:", userId);
       return res.status(404).send({ message: "User not found." });
     }
 
-    console.log("Files received:", req.files);
-
-    // Initialize file paths and URLs
+    // File handling
     const fileFields = ["signatureFile", "passportPhotoFile", "educationCertFile", "profilePic", "profileBanner"];
     const fileUrls = {};
 
@@ -474,37 +472,29 @@ router.put("/edit/:id", upload.fields([
       const filePath = req.files?.[field]?.[0]?.path;
       if (filePath) {
         try {
-          console.log(`Uploading ${field}:`, filePath);
           fileUrls[field] = await uploadFile(filePath, req.files[field][0].originalname);
           deleteTempFile(filePath);
-          console.log(`${field} uploaded successfully:`, fileUrls[field]);
         } catch (uploadError) {
-          console.error(`Error uploading ${field}:`, uploadError);
           return res.status(500).send({ message: `Failed to upload ${field}`, error: uploadError.message });
         }
       } else {
-        fileUrls[field] = user[field]; // Keep existing URL if no new file uploaded
+        fileUrls[field] = user[field];
       }
     }
 
-    // Ensure `applyingFor` is a single ObjectId
+    // Ensure `applyingFor` is a valid ObjectId
     let applyingForDegreeId = req.body.applyingFor;
     if (applyingForDegreeId && !mongoose.Types.ObjectId.isValid(applyingForDegreeId)) {
       return res.status(400).send({ message: "Invalid degree ID format." });
     }
 
-    console.log("New applyingFor degreeId:", applyingForDegreeId);
-
-    // Filter degree progress to keep only objects that match the applyingFor degreeId
+    // If `applyingFor` changes, clear `degreeProgress`
     let updatedDegreeProgress = user.degreeProgress || [];
-    if (applyingForDegreeId) {
-      updatedDegreeProgress = updatedDegreeProgress.filter(progress => progress.degreeId.toString() === applyingForDegreeId);
-      console.log("Filtered degreeProgress after removing mismatches:", updatedDegreeProgress);
+    if (applyingForDegreeId && user.applyingFor?.toString() !== applyingForDegreeId) {
+      updatedDegreeProgress = [];
     }
 
-    // Debugging: Logging all updated values before saving
-    console.log("Updated fields:", { ...req.body, ...fileUrls, degreeProgress: updatedDegreeProgress });
-
+    // Update user
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
@@ -516,18 +506,50 @@ router.put("/edit/:id", upload.fields([
       { new: true }
     );
 
-    console.log("User updated successfully:", updatedUser);
-    res.status(200).send({
-      message: "User updated successfully.",
-      user: updatedUser,
-    });
+    res.status(200).send({ message: "User updated successfully.", user: updatedUser });
 
   } catch (error) {
-    console.error("Error updating user:", error);
-    res.status(500).send({
-      message: "Failed to update user.",
-      error: error.message,
-    });
+    res.status(500).send({ message: "Failed to update user.", error: error.message });
+  }
+});
+
+router.put("/edit1/:id", async (req, res) => {
+  try {
+    const userId = req.params.id;
+    console.log("Updating user:", userId);
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).send({ message: "User not found." });
+    }
+
+    // Ensure `applyingFor` is a valid ObjectId
+    let applyingForDegreeId = req.body.applyingFor;
+    if (applyingForDegreeId && !mongoose.Types.ObjectId.isValid(applyingForDegreeId)) {
+      return res.status(400).send({ message: "Invalid degree ID format." });
+    }
+
+    // If `applyingFor` changes, clear `degreeProgress`
+    let updatedDegreeProgress = user.degreeProgress || [];
+    if (applyingForDegreeId && user.applyingFor?.toString() !== applyingForDegreeId) {
+      updatedDegreeProgress = [];
+    }
+
+    // Update user
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        ...req.body,
+        applyingFor: applyingForDegreeId,
+        degreeProgress: updatedDegreeProgress,
+      },
+      { new: true }
+    );
+
+    res.status(200).send({ message: "User updated successfully.", user: updatedUser });
+
+  } catch (error) {
+    res.status(500).send({ message: "Failed to update user.", error: error.message });
   }
 });
 
