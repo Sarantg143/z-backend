@@ -53,14 +53,15 @@ router.post("/signup", async (req, res) => {
 // Login Route
 router.post("/login", async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { email, password } = req.body; 
     const user = await User.findOne({
-      $or: [{ username }, { email }],
+      $or: [{ email }, { username: email }],
     });
 
     if (!user) {
       return res.status(404).send({ message: "User not found." });
     }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).send({ message: "Invalid username or password." });
@@ -68,9 +69,10 @@ router.post("/login", async (req, res) => {
 
     res.status(200).send({
       message: "Login successful.",
-      user: { id: user._id, 
-        email: user.email, 
-        username: user.username, 
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
         role: user.role,
         adminAuth: user.adminAuth,
       },

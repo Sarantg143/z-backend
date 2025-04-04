@@ -2,9 +2,11 @@ const mongoose = require("mongoose");
 
 const DegreeProgressSchema = new mongoose.Schema({
   degreeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Degree', required: true },
+  degreeTitle: { type: String },
   courses: [
     {
       courseId: { type: mongoose.Schema.Types.ObjectId, required: true },
+      courseTitle: { type: String },
       isComplete: { type: Boolean, default: false },
       progressPercentage: { type: Number, default: 0 },
       chapters: [

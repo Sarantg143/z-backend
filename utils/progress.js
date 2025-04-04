@@ -19,10 +19,12 @@ const updateLessonProgress = async (userId, degreeId, lessonId, subLessonId = nu
 
       degreeProgress = {
         degreeId: degree._id,
+        degreeTitle: degree.title,
         isDegreeComplete: false,
         progressPercentage: 0,
         courses: degree.courses.map(course => ({
           courseId: course.courseId,
+          courseTitle: course.title,
           isComplete: false,
           progressPercentage: 0,
           chapters: course.chapters.map(chapter => ({
