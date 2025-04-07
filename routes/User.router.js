@@ -182,7 +182,7 @@ router.post("/forgot-password", async (req, res) => {
     await transporter.sendMail(mailOptions);
     res.status(200).json({ message: "Password reset link sent to your email." });
   } catch (error) {
-    res.status(500).json({ message: "An unexpected error occurred. Please try again later." });
+    res.status(500).json({ message: "An unexpected error occurred. Please try again later." ,error: error.message, });
   }
 });
 
