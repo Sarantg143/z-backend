@@ -223,18 +223,17 @@ router.post('/submit', upload.array("answerFiles"), async (req, res) => {
     }
 });
 
+
 router.get('/:userId/:degreeId', async (req, res) => {
-  try {
+    try {
       const { userId, degreeId } = req.params;
       const answerDoc = await Answer.findOne({ userId, degreeId });
-      if (!answerDoc) {
-          return res.status(404).json({ message: 'Answers not found' });
-      }
-      res.status(200).json(answerDoc);
-  } catch (error) {
+      res.status(200).json(answerDoc || {});
+    } catch (error) {
       res.status(500).json({ message: 'Server error', error });
-  }
-});
+    }
+  });
+  
 
 router.put('/update-marks/:userId/:degreeId', async (req, res) => {
     try {

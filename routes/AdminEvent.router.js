@@ -32,32 +32,18 @@ adminEventRouter.post('/', async (req, res) => {
   
   adminEventRouter.get('/:degreeId', async (req, res) => {
     const { degreeId } = req.params;
-  
     try {
       const events = await AdminEvent.find({ degreeId });
-      if (!events.length ) {
-        return res.status(404).json({ message: 'No events found for the given degree ID' });
-      }
+      // if (!events.length ) {
+      //   return res.status(404).json({ message: 'No events found for the given degree ID' });
+      // }
       res.status(200).json({ events });
     } catch (error) {
       console.error('Error fetching events by degree ID:', error);
       res.status(500).json({ message: 'Error fetching events', error });
     }
   });
-  adminEventRouter.get('/:degreeId', async (req, res) => {
-    const { degreeId } = req.params;
-    try {
-      const events = await AdminEvent.find({ degreeId });
 
-      if (!events || events.length === 0) {
-        return res.status(404).json({ message: 'No events found for the given degree ID' });
-      }
-      res.status(200).json({ events });
-    } catch (error) {
-      console.error('Error fetching events by degree ID:', error);
-      res.status(500).json({ message: 'Error fetching events', error });
-    }
-  });
 
   adminEventRouter.put('/:eventId', async (req, res) => {
     const { eventId } = req.params;
