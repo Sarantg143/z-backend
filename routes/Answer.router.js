@@ -140,7 +140,7 @@ router.post('/submit', upload.array("answerFiles"), async (req, res) => {
   });
   
 
-  router.post('/submit1', upload.array("answerFiles"), async (req, res) => {
+  router.post('/submit2', upload.array("answerFiles"), async (req, res) => {
     const tempFiles = [];
     try {
         const { userId, degreeId, courses, chapters, lessons, subLessons } = req.body;
@@ -312,5 +312,115 @@ router.put('/update-marks/:userId/:degreeId', async (req, res) => {
     }
 });
 
+
+router.post('/submit1', upload.array("answerFiles"), async (req, res) => {
+    const tempFiles = [];
+  
+    try {
+      const { userId, degreeId, courses, chapters, lessons, subLessons } = req.body;
+  
+      if (!userId || !degreeId) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+  
+      const degreeDoc = await Degree.findOne({ degreeId });
+      if (!degreeDoc) {
+        return res.status(404).json({ message: 'Degree not found' });
+      }
+  
+      const degreeTitle = degreeDoc.title;
+  
+      let answerDoc = await Answer.findOne({ userId, degreeId });
+      if (!answerDoc) {
+        answerDoc = new Answer({
+          userId,
+          degreeId,
+          degreeTitle,
+          courses: [],
+          chapters: [],
+          lessons: [],
+          subLessons: []
+        });
+      } else {
+        answerDoc.degreeTitle = degreeTitle;
+      }
+  
+      const parseArray = (val) => (Array.isArray(val) ? val : JSON.parse(val || "[]"));
+      const courseIds = parseArray(courses);
+      const chapterIds = parseArray(chapters);
+      const lessonIds = parseArray(lessons);
+      const subLessonIds = parseArray(subLessons);
+  
+      const uploadedFiles = req.files || [];
+      const answerFilesUrls = await Promise.all(
+        uploadedFiles.map(async (file) => {
+          tempFiles.push(file.path);
+          return await uploadFile(file.path, file.originalname);
+        })
+      );
+  
+      const allCourses = degreeDoc.courses || [];
+      const allChapters = allCourses.flatMap(c => c.chapters || []);
+      const allLessons = allChapters.flatMap(ch => ch.lessons || []);
+      const allSubLessons = allLessons.flatMap(ls => ls.subLessons || []);
+  
+      const processEntities = async (ids, fieldName, idField, titleField, sourceList) => {
+        for (const id of ids) {
+          const found = sourceList.find(item => item[idField]?.toString() === id);
+          if (!found) continue;
+  
+          let entity = answerDoc[fieldName].find(e => e[idField]?.toString() === id);
+  
+          if (!entity) {
+            entity = {
+              [idField]: found[idField],
+              [titleField]: found.title,
+              attempts: [],
+              bestMarks: 0
+            };
+            answerDoc[fieldName].push(entity);
+          } else {
+            entity[titleField] = found.title;
+          }
+  
+          const attemptsData = found.attempts || [];
+          for (const attemptData of attemptsData) {
+            const attempt = {
+              answers: attemptData.answers.map(answer => {
+                return {
+                  ...answer,
+                  maxMark: answer.type === "MCQ" ? 1 : (answer.maxMark || 10),
+                  fileUrl: ["QuestionAnswer", "paragraph"].includes(answer.type) ? answer.fileUrl || null : null
+                };
+              }),
+              marksObtained: attemptData.answers.reduce((sum, ans) => sum + (ans.marks || 0), 0),
+              attemptedAt: new Date(),
+              isBest: false
+            };
+            entity.attempts.push(attempt);
+            entity.bestMarks = Math.max(entity.bestMarks, attempt.marksObtained);
+          }
+        }
+      };
+  
+      await processEntities(courseIds, 'courses', 'courseId', 'courseTitle', allCourses);
+      await processEntities(chapterIds, 'chapters', 'chapterId', 'chapterTitle', allChapters);
+      await processEntities(lessonIds, 'lessons', 'lessonId', 'lessonTitle', allLessons);
+      await processEntities(subLessonIds, 'subLessons', 'sublessonId', 'sublessonTitle', allSubLessons);
+  
+      await answerDoc.save();
+  
+      res.status(201).json({ message: 'Answers submitted successfully', answer: answerDoc });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Submission failed', error: error.message });
+    } finally {
+      await Promise.all(
+        tempFiles.map(async (path) => {
+          try { await fs.unlink(path); } catch (err) { console.error(err); }
+        })
+      );
+    }
+  });
 
 module.exports = router;
