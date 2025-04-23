@@ -140,7 +140,7 @@ router.post('/submit', upload.array("answerFiles"), async (req, res) => {
   });
   
 
-  router.post('/submit2', upload.array("answerFiles"), async (req, res) => {
+  router.post('/submit1', upload.array("answerFiles"), async (req, res) => {
     const tempFiles = [];
     try {
         const { userId, degreeId, courses, chapters, lessons, subLessons } = req.body;
@@ -313,7 +313,7 @@ router.put('/update-marks/:userId/:degreeId', async (req, res) => {
 });
 
 
-router.post('/submit1', upload.array("answerFiles"), async (req, res) => {
+router.post('/submit2', upload.array("answerFiles"), async (req, res) => {
     const tempFiles = [];
   
     try {
