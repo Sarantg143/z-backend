@@ -70,6 +70,7 @@ const SubLessonAnswerSchema = new Schema({
 
 const AnswerSchema = new Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
+  username: { type: String },
   degreeId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Degree' },
   degreeTitle: { type: String },
   totalMarks: { type: Number, default: 0 },

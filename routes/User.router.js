@@ -85,7 +85,7 @@ router.post("/login", async (req, res) => {
 
 
 // Google Login Route
-router.post("/auth/google", async (req, res) => {
+router.post("/auth/google2", async (req, res) => {
   try {
     const { token } = req.body;
 
@@ -129,6 +129,62 @@ router.post("/auth/google", async (req, res) => {
     res.status(500).send({ message: "Google login failed.", error: error.message });
   }
 });
+
+router.post("/auth/google", async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    // Verify the Firebase token
+    const decodedToken = await auth.verifyIdToken(token);
+    const { email, name, uid } = decodedToken;
+
+    // Check if the user already exists in the database
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      let baseUsername = name || email.split('@')[0];
+      let username = baseUsername;
+      let counter = 1;
+
+      // Ensure the username is unique
+      while (await User.findOne({ username })) {
+        username = `${baseUsername}${counter}`;
+        counter++;
+      }
+
+      // Create new user
+      user = new User({
+        email,
+        username,
+        role: 'client', // Default role
+      });
+      await user.save();
+    }
+
+    // Generate JWT token
+    const jwtToken = jwt.sign(
+      { userId: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    // Send response
+    res.status(200).send({
+      message: "Google login successful.",
+      // token: jwtToken,
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Error during Google login:", error);
+    res.status(500).send({ message: "Google login failed.", error: error.message });
+  }
+});
+
 
 // POST route to handle forgot password
 router.post("/forgot-password", async (req, res) => {
